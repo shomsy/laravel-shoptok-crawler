@@ -40,11 +40,12 @@ and "TV sprejemniki" categories, stores them in a MySQL database, and displays t
    docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html laravelsail/php83-composer:latest composer install --ignore-platform-reqs
    ```
 
-3.  **Start Environment (with Selenium)**
+3. **Start Environment (with Selenium)**
    ```bash
    ./vendor/bin/sail up -d
    ```
-   *Ensure the `selenium` container is running.*
+
+*Ensure the `selenium` container is running.*
 
 4. **Run Migrations**
 

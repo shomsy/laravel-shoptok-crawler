@@ -41,7 +41,7 @@ final class ProductController extends Controller
      *
      * @return View The rendered view with products and sidebar data.
      */
-    public function index(Request $request): View
+    public function index(Request $request) : View
     {
         // 🏷️ Step 1: Read the optional category filter from query (?category=slug).
         $categorySlug = $request->string(key: 'category')->toString();
@@ -53,7 +53,7 @@ final class ProductController extends Controller
         if ($categorySlug !== '') {
             $query->whereHas(
                 relation: 'category',
-                callback: static fn($q) => $q->where('slug', $categorySlug)
+                callback: static fn ($q) => $q->where('slug', $categorySlug)
             );
         }
 
@@ -75,9 +75,9 @@ final class ProductController extends Controller
         // 🎨 Step 6: Render the Blade view with data.
         // View: resources/views/products/index.blade.php
         return view(view: 'products.index', data: [
-            'products' => $products,
+            'products'          => $products,
             'sidebarCategories' => $sidebarCategories,
-            'activeCategory' => $categorySlug,
+            'activeCategory'    => $categorySlug,
         ]);
     }
 }

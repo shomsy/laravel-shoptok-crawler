@@ -65,7 +65,8 @@ final class CrawlTvSprejemnikiCommand extends Command
         ShoptokSeleniumService       $selenium,
         ShoptokCategoryParserService $parser,
         CrawlShoptokCategoryAction   $action
-    ): int {
+    ) : int
+    {
         // 🧭 Step 0: Define root URL for "TV Sprejemniki" category.
         $rootUrl = config(key: 'shoptok.categories.tv_sprejemniki.url');
 
@@ -77,16 +78,17 @@ final class CrawlTvSprejemnikiCommand extends Command
 
         // 🌐 Step 2: Fetch the root page and look for subcategories.
         $result = $selenium->getHtml(url: $rootUrl);
-        $subs = $parser->parseSubcategories(html: $result->html);
+        $subs   = $parser->parseSubcategories(html: $result->html);
 
         // 🕳️ If nothing is found, warn and exit gracefully.
         if (empty($subs)) {
             $this->warn(string: '⚠️ No subcategories found — skipping crawl.');
+
             return self::FAILURE;
         }
 
         // Initialize counters for total imports and page limits.
-        $total = 0;
+        $total    = 0;
         $maxPages = (int) $this->option(key: 'max-pages');
 
         // 🔁 Step 3: Loop through every discovered subcategory.
@@ -100,7 +102,7 @@ final class CrawlTvSprejemnikiCommand extends Command
             // 🎬 Step 4: Crawl that subcategory (delegated to Action).
             $count = $action->handle(
                 category: $cat,
-                baseUrl: $sub['url'],
+                baseUrl : $sub['url'],
                 maxPages: $maxPages
             );
 
@@ -109,8 +111,8 @@ final class CrawlTvSprejemnikiCommand extends Command
 
             // Log result for each subcategory.
             Log::info(message: 'Crawled subcategory', context: [
-                'slug' => $cat->slug,
-                'items' => $count,
+                'slug'   => $cat->slug,
+                'items'  => $count,
                 'parent' => $root->slug
             ]);
 

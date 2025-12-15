@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class() extends Migration {
-    public function up(): void
+    public function up() : void
     {
-        Schema::create(table: 'products', callback: static function (Blueprint $table): void {
+        Schema::create(table: 'products', callback: static function (Blueprint $table) : void {
             $table->id();
             $table->string(column: 'external_id')->unique();
             $table->string(column: 'name');
@@ -22,7 +22,7 @@ return new class() extends Migration {
         });
     }
 
-    public function down(): void
+    public function down() : void
     {
         Schema::dropIfExists(table: 'products');
     }

@@ -40,15 +40,16 @@ final class Product extends Model
      *
      * @var string[]
      */
-    protected $fillable = [
-        'external_id',
-        'name',
-        'price',
-        'currency',
-        'image_url',
-        'product_url',
-        'category_id',
-    ];
+    protected $fillable
+        = [
+            'external_id',
+            'name',
+            'price',
+            'currency',
+            'image_url',
+            'product_url',
+            'category_id',
+        ];
 
     /**
      * 💰 Casts numeric fields to proper types.
@@ -58,9 +59,10 @@ final class Product extends Model
      *
      * @var array<string, string>
      */
-    protected $casts = [
-        'price' => 'decimal:2',
-    ];
+    protected $casts
+        = [
+            'price' => 'decimal:2',
+        ];
 
     /**
      * 🔗 Relationship: this product belongs to a single category.
@@ -72,7 +74,7 @@ final class Product extends Model
      *
      * @return BelongsTo<Category, self>
      */
-    public function category(): BelongsTo
+    public function category() : BelongsTo
     {
         return $this->belongsTo(related: Category::class);
     }

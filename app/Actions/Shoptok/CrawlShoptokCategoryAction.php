@@ -63,13 +63,13 @@ final readonly class CrawlShoptokCategoryAction
      *  4. Save products with the Upsert Service.
      *  5. Repeat for the next page (with random delay).
      *
-     * @param Category $category  The category record where products will be linked.
-     * @param string   $baseUrl   The Shoptok category URL to start from.
-     * @param int      $maxPages  Optional page limit (safety against infinite loops).
+     * @param Category $category The category record where products will be linked.
+     * @param string   $baseUrl  The Shoptok category URL to start from.
+     * @param int      $maxPages Optional page limit (safety against infinite loops).
      *
      * @return int The total number of imported or updated products.
      */
-    public function handle(Category $category, string $baseUrl, int $maxPages = 25): int
+    public function handle(Category $category, string $baseUrl, int $maxPages = 25) : int
     {
         $totalImported = 0;
 
@@ -81,7 +81,7 @@ final readonly class CrawlShoptokCategoryAction
             try {
                 // Ask Selenium to open the page and return HTML.
                 $result = $this->seleniumService->getHtml(url: $url);
-                $html = $result->html;
+                $html   = $result->html;
 
                 // Sanity check — if page is empty, log and skip.
                 if (trim($html) === '') {
@@ -90,7 +90,7 @@ final readonly class CrawlShoptokCategoryAction
                 }
 
                 // Parse the DOM and look for product boxes.
-                $dom = new Crawler(node: $html);
+                $dom        = new Crawler(node: $html);
                 $itemBlocks = $this->parserService->findProductNodes(dom: $dom);
 
                 // If there are no more product boxes — we're done.
@@ -103,7 +103,7 @@ final readonly class CrawlShoptokCategoryAction
                 }
 
                 $pageImported = 0;
-                $pageItems = []; // 📦 Buffer for bulk insert
+                $pageItems    = []; // 📦 Buffer for bulk insert
 
                 // Loop through each product block on the page.
                 foreach ($itemBlocks as $node) {
@@ -124,7 +124,7 @@ final readonly class CrawlShoptokCategoryAction
 
                 // 🚀 Mass save! (Batch Upsert)
                 // We send all specific page items to the database in one go.
-                if (!empty($pageItems)) {
+                if (! empty($pageItems)) {
                     $this->upsertService->upsertBatch(items: $pageItems, category: $category);
                 }
 
@@ -132,11 +132,11 @@ final readonly class CrawlShoptokCategoryAction
 
                 // Log what happened on this page (success summary).
                 Log::info(message: 'Crawled page successfully', context: [
-                    'url' => $url,
-                    'page' => $page,
+                    'url'         => $url,
+                    'page'        => $page,
                     'itemsStored' => $pageImported,
                     'totalStored' => $totalImported,
-                    'duration' => $result->executionTime
+                    'duration'    => $result->executionTime
                 ]);
 
                 // If a page loads but no new products were found, stop gracefully.
@@ -155,10 +155,10 @@ final readonly class CrawlShoptokCategoryAction
                 Log::error(
                     message: "Failed to crawl page {$page}",
                     context: [
-                        'url' => $url,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]
+                                 'url'   => $url,
+                                 'error' => $e->getMessage(),
+                                 'trace' => $e->getTraceAsString()
+                             ]
                 );
 
                 break; // stop crawling after a serious error
@@ -181,7 +181,7 @@ final readonly class CrawlShoptokCategoryAction
      *
      * @return string The full URL for the requested page.
      */
-    private function buildPageUrl(string $baseUrl, int $page): string
+    private function buildPageUrl(string $baseUrl, int $page) : string
     {
         // Page 1 is the base URL, no query string needed.
         if ($page <= 1) {

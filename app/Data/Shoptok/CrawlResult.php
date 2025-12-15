@@ -35,7 +35,8 @@ readonly class CrawlResult
         public string $html,
         public string $url,
         public float  $executionTime,
-    ) {
+    )
+    {
         // No logic here — this class is just a data container.
         // Its immutability (readonly) ensures the data can’t be changed later.
     }

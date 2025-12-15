@@ -26,10 +26,10 @@ final class ShoptokProductParserService
      *
      * @return array|null Returns the organized data, or NULL if it's just an ad/junk.
      */
-    public function parseItem(Crawler $item): ?array
+    public function parseItem(Crawler $item) : ?array
     {
         $name = $this->firstLinkText(item: $item);
-        $url = $this->firstLinkHref(item: $item);
+        $url  = $this->firstLinkHref(item: $item);
 
         if ($name === null || $url === null) {
             return null;
@@ -39,15 +39,15 @@ final class ShoptokProductParserService
 
         return [
             'external_id' => $this->makeExternalId(url: $url),
-            'name' => $name,
-            'price' => $price,
-            'currency' => 'EUR',
-            'image_url' => $this->firstImageSrc(item: $item),
+            'name'        => $name,
+            'price'       => $price,
+            'currency'    => 'EUR',
+            'image_url'   => $this->firstImageSrc(item: $item),
             'product_url' => $this->normalizeUrl(url: $url),
         ];
     }
 
-    private function firstLinkText(Crawler $item): ?string
+    private function firstLinkText(Crawler $item) : ?string
     {
         $links = $item->filter(selector: 'a');
         if ($links->count() === 0) {
@@ -60,13 +60,14 @@ final class ShoptokProductParserService
             if ($text === '' || $this->isCtaText(text: $text)) {
                 continue;
             }
+
             return $text;
         }
 
         return null;
     }
 
-    private function isCtaText(string $text): bool
+    private function isCtaText(string $text) : bool
     {
         $t = mb_strtolower(string: $text);
 
@@ -75,7 +76,7 @@ final class ShoptokProductParserService
             || str_contains(haystack: $t, needle: 'vec o ponudbi');
     }
 
-    private function firstLinkHref(Crawler $item): ?string
+    private function firstLinkHref(Crawler $item) : ?string
     {
         $links = $item->filter(selector: 'a');
         if ($links->count() === 0) {
@@ -88,35 +89,37 @@ final class ShoptokProductParserService
             if ($href === '' || $this->isCtaText(text: $text)) {
                 continue;
             }
+
             return $href;
         }
 
         return null;
     }
 
-    private function extractPriceFromText(string $text): float
+    private function extractPriceFromText(string $text) : float
     {
         // hvata npr: "od 1.799,99 €" ili "412,90 €"
-        if (!preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+),\d{2}\s*€/', subject: $text, matches: $m)) {
-            if (!preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+)\s*€/', subject: $text, matches: $m2)) {
+        if (! preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+),\d{2}\s*€/', subject: $text, matches: $m)) {
+            if (! preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+)\s*€/', subject: $text, matches: $m2)) {
                 return 0.0;
             }
             $rawInt = str_replace(search: '.', replace: '', subject: $m2[1]);
-            return (float)$rawInt;
+
+            return (float) $rawInt;
         }
 
         $raw = str_replace(search: '.', replace: '', subject: $m[1]);       // "1.799" -> "1799"
         $raw = str_replace(search: ',', replace: '.', subject: $raw);       // "1799,99" -> "1799.99"
 
-        return (float)$raw;
+        return (float) $raw;
     }
 
-    private function makeExternalId(string $url): string
+    private function makeExternalId(string $url) : string
     {
         return hash(algo: 'sha256', data: $this->normalizeUrl(url: $url));
     }
 
-    private function normalizeUrl(string $url): string
+    private function normalizeUrl(string $url) : string
     {
         // Shoptok često daje relativne linkove, a nekad absolute. Normalizujemo.
         if (str_starts_with(haystack: $url, needle: 'http://') || str_starts_with(haystack: $url, needle: 'https://')) {
@@ -126,7 +129,7 @@ final class ShoptokProductParserService
         return 'https://www.shoptok.si' . $url;
     }
 
-    private function firstImageSrc(Crawler $item): ?string
+    private function firstImageSrc(Crawler $item) : ?string
     {
         $img = $item->filter(selector: 'img');
         if ($img->count() === 0) {
@@ -146,7 +149,7 @@ final class ShoptokProductParserService
      * We locate CTA links ("Primerjaj cene", "Več o ponudbi")
      * and walk up the DOM tree to find a stable container node.
      */
-    public function findProductNodes(Crawler $dom): Crawler
+    public function findProductNodes(Crawler $dom) : Crawler
     {
         $ctaLinks = $dom->filterXPath(
             xpath: "//a[
@@ -193,7 +196,7 @@ final class ShoptokProductParserService
 
                 $node = $node->parentNode;
 
-                $tag = strtolower((string)$node->nodeName);
+                $tag = strtolower((string) $node->nodeName);
 
                 if (in_array(needle: $tag, haystack: ['li', 'article', 'div'], strict: true)) {
                     $containers[spl_object_hash(object: $node)] = $node;

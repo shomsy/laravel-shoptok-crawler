@@ -52,11 +52,12 @@ class User extends Authenticatable
      * ]);
      * ```
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
+    protected $fillable
+        = [
+            'name',
+            'email',
+            'password',
+        ];
 
     /**
      * 🔒 The attributes that should be hidden when serialized (e.g. to JSON).
@@ -65,10 +66,11 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden
+        = [
+            'password',
+            'remember_token',
+        ];
 
     /**
      * 🧮 Type casting configuration.
@@ -79,11 +81,11 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
+    protected function casts() : array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
 }

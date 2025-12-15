@@ -72,19 +72,19 @@ final class CrawlTelevizorjiCommand extends Command
      * @return int
      *         Exit code: `0` for success, non-zero for failure (per POSIX standard).
      */
-    public function handle(CrawlShoptokCategoryAction $action): int
+    public function handle(CrawlShoptokCategoryAction $action) : int
     {
         // 🧱 Step 1: Ensure “Televizorji” category exists (create it if missing).
         $category = Category::firstOrCreate(
             attributes: ['slug' => 'televizorji'],
-            values: ['name' => 'Televizorji']
+            values    : ['name' => 'Televizorji']
         );
 
         // 🌐 Step 2: Start the crawl process.
         // The Action handles Selenium fetching, parsing, and DB upserting.
         $count = $action->handle(
             category: $category,
-            baseUrl: 'https://www.shoptok.si/televizorji/cene/206',
+            baseUrl : 'https://www.shoptok.si/televizorji/cene/206',
             maxPages: (int) $this->option(key: 'max-pages')
         );
 

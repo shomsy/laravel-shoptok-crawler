@@ -52,7 +52,7 @@ final class Category extends Model
      * $category->products;
      * ```
      */
-    public function products(): HasMany
+    public function products() : HasMany
     {
         return $this->hasMany(related: Product::class);
     }
@@ -68,7 +68,7 @@ final class Category extends Model
      * $subcategory->parent->name;
      * ```
      */
-    public function parent(): BelongsTo
+    public function parent() : BelongsTo
     {
         return $this->belongsTo(related: self::class, foreignKey: 'parent_id');
     }
@@ -85,7 +85,7 @@ final class Category extends Model
      * $root->children;
      * ```
      */
-    public function children(): HasMany
+    public function children() : HasMany
     {
         return $this->hasMany(related: self::class, foreignKey: 'parent_id');
     }
@@ -99,9 +99,10 @@ final class Category extends Model
      * ```
      *
      * @param Builder $query
+     *
      * @return Builder
      */
-    public function scopeRoots(Builder $query): Builder
+    public function scopeRoots(Builder $query) : Builder
     {
         return $query->whereNull(columns: 'parent_id');
     }

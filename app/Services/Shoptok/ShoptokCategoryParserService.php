@@ -20,9 +20,10 @@ final class ShoptokCategoryParserService
 {
     /**
      * Vraća subkategorije kao: name, slug, url
+     *
      * @return array<string, array{name: string, slug: string, url: string}>
      */
-    public function parseSubcategories(string $html): array
+    public function parseSubcategories(string $html) : array
     {
         $dom = new Crawler(node: $html);
 
@@ -46,21 +47,21 @@ final class ShoptokCategoryParserService
             }
 
             // Zadrži kratke i relevantne nazive (Televizorji, TV dodatki) kao u bonus zahtevu.
-            if (!str_contains(haystack: $lower, needle: 'tv') && !str_contains(haystack: $lower, needle: 'telev')) {
+            if (! str_contains(haystack: $lower, needle: 'tv') && ! str_contains(haystack: $lower, needle: 'telev')) {
                 continue;
             }
 
             $out[$href] = [
                 'name' => $name,
                 'slug' => Str::slug(title: $name),
-                'url' => $this->normalizeUrl(url: $href),
+                'url'  => $this->normalizeUrl(url: $href),
             ];
         }
 
         return array_values(array: $out);
     }
 
-    private function normalizeUrl(string $url): string
+    private function normalizeUrl(string $url) : string
     {
         if (str_starts_with(haystack: $url, needle: 'http://') || str_starts_with(haystack: $url, needle: 'https://')) {
             return $url;
