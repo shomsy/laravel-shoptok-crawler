@@ -12,7 +12,7 @@ const availableBrands = ref([]);
 const breadcrumbs = ref([]);
 const currentPage = ref(1);
 const totalPages = ref(1);
-const selectedBrand = ref(null);
+const selectedBrands = ref([]);
 const sortOption = ref("popularity");
 const isLoading = ref(true);
 const categorySlug = ref(route.params.slug || route.query.category || null);
@@ -46,14 +46,14 @@ const fetchProducts = async (page = 1) => {
         let url;
         if (categorySlug.value) {
             url = `/api/categories/${categorySlug.value}?page=${page}`;
-            if (selectedBrand.value)
-                url += `&brand=${encodeURIComponent(selectedBrand.value)}`;
+            if (selectedBrands.value.length)
+                url += `&brand=${encodeURIComponent(selectedBrands.value.join(','))}`;
             if (sortOption.value && sortOption.value !== "popularity")
                 url += `&sort=${sortOption.value}`;
         } else {
             url = `/api/products?page=${page}`;
-            if (selectedBrand.value)
-                url += `&brand=${encodeURIComponent(selectedBrand.value)}`;
+            if (selectedBrands.value.length)
+                url += `&brand=${encodeURIComponent(selectedBrands.value.join(','))}`;
             if (sortOption.value && sortOption.value !== "popularity")
                 url += `&sort=${sortOption.value}`;
         }
@@ -169,7 +169,7 @@ onMounted(() => {
                                     <input
                                         type="checkbox"
                                         :value="brand"
-                                        v-model="selectedBrand"
+                                        v-model="selectedBrands"
                                         @change="fetchProducts(1)"
                                     />
                                     {{ brand }}

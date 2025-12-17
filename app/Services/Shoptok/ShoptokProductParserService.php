@@ -137,18 +137,30 @@ final class ShoptokProductParserService
      */
     private function extractPriceFromText(string $text): float
     {
-        if (!preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+),\d{2}\s*€/', subject: $text, matches: $m)) {
-            if (!preg_match(pattern: '/(\d{1,3}(\.\d{3})*|\d+)\s*€/', subject: $text, matches: $m2)) {
-                return 0.0;
-            }
-            $rawInt = str_replace(search: '.', replace: '', subject: $m2[1]);
-            return (float)$rawInt;
+        // Pattern 1: Standard Euro format with thousands dot and decimal comma "1.799,99 €"
+        // Regex Explanation:
+        // (\d{1,3}(\.\d{3})*)   -> Matches 1.799 or 179 (Integer part with dots)
+        // (,\d{2})?             -> Matches ,99 (Decimal part, optional)
+        if (preg_match('/(\d{1,3}(\.\d{3})*)(,\d{2})?\s*€/u', $text, $matches)) {
+            // We want the full number string "1.799,99"
+            // $matches[0] contains the full match including €, so we reconstruct it from parts
+            // $matches[1] is integer part "1.799"
+            // $matches[3] is decimal part ",99"
+
+            $intPart = str_replace('.', '', $matches[1]);
+            $decPart = isset($matches[3]) ? str_replace(',', '.', $matches[3]) : '';
+
+            return (float) ($intPart . $decPart);
         }
 
-        $raw = str_replace(search: '.', replace: '', subject: $m[1]);  // "1.799" -> "1799"
-        $raw = str_replace(search: ',', replace: '.', subject: $raw);  // "1799,99" -> "1799.99"
+        // Pattern 2: Fallback for spaces or other formats "1 799 €"
+        if (preg_match('/(\d[\d\s\.]*),(\d{2})\s*€/u', $text, $matches)) {
+            $intPart = preg_replace('/[^\d]/', '', $matches[1]);
+            $decPart = '.' . $matches[2];
+            return (float) ($intPart . $decPart);
+        }
 
-        return (float)$raw;
+        return 0.0;
     }
 
     /**

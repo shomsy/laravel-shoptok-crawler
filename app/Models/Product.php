@@ -33,6 +33,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class Product extends Model
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+
     /**
      * 🧱 The attributes that are mass assignable.
      *
@@ -41,16 +43,16 @@ final class Product extends Model
      * @var string[]
      */
     protected $fillable
-        = [
-            'external_id',
-            'name',
-            'price',
-            'currency',
-            'image_url',
-            'product_url',
-            'category_id',
-            'brand',
-        ];
+    = [
+        'external_id',
+        'name',
+        'price',
+        'currency',
+        'image_url',
+        'product_url',
+        'category_id',
+        'brand',
+    ];
 
     /**
      * 💰 Casts numeric fields to proper types.
@@ -61,9 +63,9 @@ final class Product extends Model
      * @var array<string, string>
      */
     protected $casts
-        = [
-            'price' => 'decimal:2',
-        ];
+    = [
+        'price' => 'decimal:2',
+    ];
 
     /**
      * 🔗 Relationship: this product belongs to a single category.

@@ -34,6 +34,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class Category extends Model
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+
     /**
      * 🧱 The attributes that can be mass-assigned (for seeding and upserting).
      *

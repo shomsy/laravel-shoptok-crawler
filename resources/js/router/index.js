@@ -7,6 +7,7 @@ const ProductList = () => import('../views/ProductList.vue');
 const routes = [
     {path: '/', component: Home},
     {path: '/products', component: ProductList},
+    {path: '/category/:slug', component: ProductList},
 ];
 
 export default createRouter({
