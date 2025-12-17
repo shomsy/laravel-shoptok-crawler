@@ -3,7 +3,8 @@
 
         <!-- 🚨 Error State -->
         <div v-if="error" class="alert alert-danger d-flex align-items-center" role="alert">
-            <svg class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" fill="currentColor" height="24" viewBox="0 0 16 16"
+            <svg class="bi bi-exclamation-triangle-fill flex-shrink-0 me-2" fill="currentColor" height="24"
+                 viewBox="0 0 16 16"
                  width="24" xmlns="http://www.w3.org/2000/svg">
                 <path
                     d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
@@ -18,7 +19,8 @@
         <nav v-if="breadcrumbs.length > 0" aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#" @click.prevent="router.push('/')">Home</a></li>
-                <li v-for="(crumb, index) in breadcrumbs" :key="crumb.slug" :class="{ active: index === breadcrumbs.length - 1 }"
+                <li v-for="(crumb, index) in breadcrumbs" :key="crumb.slug"
+                    :class="{ active: index === breadcrumbs.length - 1 }"
                     class="breadcrumb-item">
                     <a v-if="index !== breadcrumbs.length - 1" href="#"
                        @click.prevent="router.push({ query: { category: crumb.slug } })">{{ crumb.name }}</a>
@@ -67,18 +69,20 @@
                     </div>
 
                     <ul v-else class="list-group list-group-flush mb-4">
-                        <li v-for="level1 in sidebarCategories" :key="level1.id" class="list-group-item bg-transparent border-0 px-0 py-1">
+                        <li v-for="level1 in sidebarCategories" :key="level1.id"
+                            class="list-group-item bg-transparent border-0 px-0 py-1">
                             <!-- Parent Category Link (Clickable now) -->
                             <div class="d-flex justify-content-between align-items-center">
                                 <a
                                     :class="(route.query.category === level1.slug || (!route.query.category && level1.slug === 'tv-sprejemniki')) ? 'text-danger fw-bold' : 'text-dark'"
                                     class="text-decoration-none flex-grow-1"
                                     href="#"
-                                    @click.prevent="level1.slug === 'tv-sprejemniki' ? router.push({ query: {} }) : router.push({ query: { ...route.query, category: level1.slug } })" 
+                                    @click.prevent="level1.slug === 'tv-sprejemniki' ? router.push({ query: {} }) : router.push({ query: { ...route.query, category: level1.slug } })"
                                 >
                                     {{ level1.name }}
                                 </a>
-                                <span v-if="level1.children && level1.children.length > 0" class="small text-muted ms-2 cursor-pointer">
+                                <span v-if="level1.children && level1.children.length > 0"
+                                      class="small text-muted ms-2 cursor-pointer">
                                      ▼
                                 </span>
                             </div>
@@ -207,7 +211,7 @@
 </template>
 
 <script setup>
-import {nextTick, onMounted, onUnmounted, ref, watch} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import axios from 'axios';
 import {useRoute, useRouter} from 'vue-router';
 
@@ -239,7 +243,7 @@ const formatPrice = (value) =>
 const fetchData = async (isLoadMore = false, queryParams = null) => {
     // Determine active query params (Use passed args or fallback to current route)
     const currentParams = queryParams || route.query;
-    
+
     loading.value = true;
     error.value = null;
 
@@ -323,8 +327,8 @@ const changePage = (url) => {
         if (page) {
             console.log("📄 Changing to page:", page);
             // Scroll to the top of the products grid
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            router.push({ query: { ...route.query, page } });
+            window.scrollTo({top: 0, behavior: 'smooth'});
+            router.push({query: {...route.query, page}});
         }
     } catch (e) {
         console.error("❌ Pagination Error:", e);

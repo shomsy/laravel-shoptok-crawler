@@ -72,11 +72,11 @@ final class ProductController extends Controller
             }
 
             return response()->json([
-                'category'         => null, // No specific category context
-                'breadcrumbs'      => $breadcrumbs,
-                'sidebar_tree'     => $sidebarTree,
+                'category' => null, // No specific category context
+                'breadcrumbs' => $breadcrumbs,
+                'sidebar_tree' => $sidebarTree,
                 'available_brands' => $availableBrands,
-                'products'         => $products,
+                'products' => $products,
             ]);
         });
     }

@@ -28,7 +28,9 @@
                 <div v-for="cat in categories" :key="cat.id" class="col-md-4 mb-3">
                     <div class="card h-100 border-0 shadow-sm text-center p-4 hover-scale">
                         <h5 class="fw-bold text-dark">{{ cat.name }}</h5>
-                        <router-link :to="cat.slug === 'tv-sprejemniki' ? '/products' : '/products?category=' + cat.slug" class="stretched-link"></router-link>
+                        <router-link
+                            :to="cat.slug === 'tv-sprejemniki' ? '/products' : '/products?category=' + cat.slug"
+                            class="stretched-link"></router-link>
                     </div>
                 </div>
 

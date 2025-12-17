@@ -185,7 +185,7 @@ final class CategoryController extends Controller
                 array_unshift($breadcrumbs, [
                     'name' => $crumb->name,
                     'slug' => $crumb->slug,
-                    'url'  => "/category/{$crumb->slug}"
+                    'url' => "/category/{$crumb->slug}"
                 ]);
 
                 $crumb = $crumb->parent; // Using Relationship
@@ -200,11 +200,11 @@ final class CategoryController extends Controller
                 ->pluck('brand');
 
             return response()->json([
-                'category'         => $category,
-                'breadcrumbs'      => $breadcrumbs,
-                'sidebar_tree'     => $sidebarTree,
+                'category' => $category,
+                'breadcrumbs' => $breadcrumbs,
+                'sidebar_tree' => $sidebarTree,
                 'available_brands' => $availableBrands,
-                'products'         => $products,
+                'products' => $products,
             ]);
         });
     }
