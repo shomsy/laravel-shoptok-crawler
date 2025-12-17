@@ -34,13 +34,15 @@ use Throwable;
 final readonly class ShoptokSeleniumService
 {
     private const DEFAULT_TIMEOUT_MS = 15000;
-    private const REQUEST_TIMEOUT_MS = 45000;
-    private const WAIT_TIMEOUT_SEC   = 10;
+    private const REQUEST_TIMEOUT_MS = 60000;
+    private const WAIT_TIMEOUT_SEC = 10;
 
     public function __construct(
         private LoggerInterface  $logger,
         private ConfigRepository $config,
-    ) {}
+    )
+    {
+    }
 
     /**
      * Fetch HTML content from the target URL via Selenium.
@@ -50,10 +52,10 @@ final readonly class ShoptokSeleniumService
      * @return CrawlResult Result object containing HTML and metadata.
      * @throws RuntimeException If crawling fails definitively.
      */
-    public function getHtml(string $url) : CrawlResult
+    public function getHtml(string $url): CrawlResult
     {
         $startTime = microtime(true);
-        $driver    = null;
+        $driver = null;
 
         try {
             $this->logger->info('Initializing Selenium fetch', ['url' => $url]);
@@ -76,13 +78,13 @@ final readonly class ShoptokSeleniumService
             $duration = microtime(true) - $startTime;
 
             return new CrawlResult(
-                html         : $html,
-                url          : $url,
+                html: $html,
+                url: $url,
                 executionTime: round($duration, 4)
             );
         } catch (Throwable $e) {
             $this->logger->error('Selenium crawl failed', [
-                'url'   => $url,
+                'url' => $url,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -97,19 +99,18 @@ final readonly class ShoptokSeleniumService
     /**
      * Configures and creates the WebDriver instance.
      */
-    private function createDriver() : RemoteWebDriver
+    private function createDriver(): RemoteWebDriver
     {
         $seleniumUrl = $this->config->get('services.selenium.host', 'http://selenium:4444/wd/hub');
 
         $options = new ChromeOptions();
         $options->addArguments([
-                                   '--headless',
-                                   '--no-sandbox',
-                                   '--disable-dev-shm-usage',
-                                   '--disable-blink-features=AutomationControlled',
-                                   '--remote-debugging-port=' . random_int(9000, 9999),
-                                   '--user-agent=' . $this->getUserAgent(),
-                               ]);
+            '--headless',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-blink-features=AutomationControlled',
+            '--user-agent=' . $this->getUserAgent(),
+        ]);
 
         $capabilities = DesiredCapabilities::chrome();
         $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
@@ -117,19 +118,19 @@ final readonly class ShoptokSeleniumService
         // Ideally, RemoteWebDriver::create should be wrapped in a factory to be mockable,
         // but for a pragmatic Laravel service, this is acceptable if integration tests are used.
         return RemoteWebDriver::create(
-            selenium_server_url     : $seleniumUrl,
-            desired_capabilities    : $capabilities,
+            selenium_server_url: $seleniumUrl,
+            desired_capabilities: $capabilities,
             connection_timeout_in_ms: self::DEFAULT_TIMEOUT_MS,
-            request_timeout_in_ms   : self::REQUEST_TIMEOUT_MS,
+            request_timeout_in_ms: self::REQUEST_TIMEOUT_MS,
         );
     }
 
-    private function getUserAgent() : string
+    private function getUserAgent(): string
     {
         return $this->config->get(key: 'shoptok.headers.User-Agent', default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
     }
 
-    private function waitForPageLoad(RemoteWebDriver $driver) : void
+    private function waitForPageLoad(RemoteWebDriver $driver): void
     {
         // Wait until <body> is present in DOM
         $driver->wait(self::WAIT_TIMEOUT_SEC)->until(
@@ -140,7 +141,7 @@ final readonly class ShoptokSeleniumService
         usleep(500000); // 500ms
     }
 
-    private function ensureContentIsValid(string $html, string $url) : void
+    private function ensureContentIsValid(string $html, string $url): void
     {
         if (str_contains($html, 'Just a moment...') || str_contains($html, 'cf-browser-verification')) {
             $this->logger->warning('Cloudflare challenge detected.', ['url' => $url]);

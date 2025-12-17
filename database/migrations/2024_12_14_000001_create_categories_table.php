@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class() extends Migration {
-    public function up() : void
+    public function up(): void
     {
-        Schema::create(table: 'categories', callback: static function (Blueprint $table) : void {
+        Schema::create(table: 'categories', callback: static function (Blueprint $table): void {
             $table->id();
             $table->string(column: 'name');
             $table->string(column: 'slug')->unique();
@@ -16,7 +16,7 @@ return new class() extends Migration {
         });
     }
 
-    public function down() : void
+    public function down(): void
     {
         Schema::dropIfExists(table: 'categories');
     }

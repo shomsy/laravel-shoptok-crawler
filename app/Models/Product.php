@@ -49,6 +49,7 @@ final class Product extends Model
             'image_url',
             'product_url',
             'category_id',
+            'brand',
         ];
 
     /**
@@ -74,7 +75,64 @@ final class Product extends Model
      *
      * @return BelongsTo<Category, self>
      */
-    public function category() : BelongsTo
+    /**
+     * 🔍 Scope for filtering and sorting products.
+     *
+     * Handles:
+     * - ?category=slug (Filter by category slug)
+     * - ?brand=name (Filter by name similarity, acting as brand)
+     * - ?sort=price_asc|price_desc (Sorting)
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \Illuminate\Http\Request $filters
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeFilter($query, $filters)
+    {
+        // 1. Filter by Category Slug
+        if ($filters->filled('category')) {
+            $query->whereHas('category', function ($q) use ($filters) {
+                $q->where('slug', $filters->input('category'));
+            });
+        }
+
+        // 2. Filter by "Brand"
+        if ($filters->filled('brand')) {
+            $brand = $filters->input('brand');
+            $query->where('brand', $brand);
+        }
+
+        // 3. Filter by Search (Name)
+        if ($filters->filled('search')) {
+            $search = $filters->input('search');
+            $query->where('name', 'LIKE', "%{$search}%");
+        }
+
+        // 4. Sorting
+        if ($filters->filled('sort')) {
+            match ($filters->input('sort')) {
+                'price_asc' => $query->orderBy('price', 'asc'),
+                'price_desc' => $query->orderBy('price', 'desc'),
+                default => $query->latest(), // Fallback
+            };
+        } else {
+            $query->latest(); // Default sort
+        }
+
+        return $query;
+    }
+
+    /**
+     * 🔗 Relationship: this product belongs to a single category.
+     *
+     * Example:
+     * ```
+     * $product->category->name; // "Televizorji"
+     * ```
+     *
+     * @return BelongsTo<Category, self>
+     */
+    public function category(): BelongsTo
     {
         return $this->belongsTo(related: Category::class);
     }

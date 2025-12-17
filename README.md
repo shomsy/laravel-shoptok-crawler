@@ -1,4 +1,56 @@
-# Shoptok Crawler (Laravel + Sail)
+# Shoptok Crawler & Product Catalog
+
+A Laravel-based crawler and Vue.js SPA for scraping and displaying TV products from Shoptok.si.
+
+## 🚀 Features
+
+- **Crawler**: Scrapes products from Shoptok categories, handling pagination, subcategories (recursion), and data
+  extraction (price, image, brand).
+- **Idempotent Storage**: Uses `updateOrCreate` and unique hashes to prevent duplicates.
+- **Vue.js Frontend**: Modern SPA with Bootstrap 5, displaying products in a responsive grid.
+- **Filtering**: Sort by price and filter by Manufacturer (Brand).
+- **Sub-menu**: Sidebar dynamically lists subcategories crawled from the root category.
+
+## 🛠️ Usage
+
+### 1. Setup & Migration
+
+```bash
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan migrate
+```
+
+### 2. Run Crawler
+
+To crawl the entire "TV sprejemniki" hierarchy (including subcategories like "Televizorji" and "TV dodatki"):
+
+```bash
+./vendor/bin/sail artisan crawl:tv-sprejemniki
+```
+
+### 3. Frontend
+
+Visit `http://localhost` to view the product catalog.
+
+---
+
+## ⚠️ Known Limitations & Implementation Notes
+
+- **Language**: The source site (Shoptok.si) is in Slovenian. Category names and product titles are kept as-is. The UI
+  labels are in English.
+- **Images**: Images are extracted using `src`, `data-src`, or `data-original`. Some products might still miss images if
+  Shoptok uses complex dynamic loading not captured by the static HTML parser.
+- **Brands**: Shoptok does not provide a structured "Brand" field. We extract brands from product titles using a Regex (
+  Samsung, LG, Sony, etc.). Products with obscure brand names in the title might not match.
+- **WAF/Blocking**: Shoptok has strict rate limiting. The crawler sleeps between requests (`usleep`), but extensive
+  crawling might still trigger temporary IP blocks.
+
+## 🏗️ Tech Stack
+
+- **Backend**: Laravel 11, SQLite/MySQL
+- **Frontend**: Vue.js 3, Bootstrap 5, Vite
+- **Crawling**: Symfony DOM Crawler, Selenium Service (optional context)
+  (Laravel + Sail)
 
 ## Overview
 
@@ -41,6 +93,7 @@ and "TV sprejemniki" categories, stores them in a MySQL database, and displays t
    ```
 
 3. **Start Environment (with Selenium)**
+
    ```bash
    ./vendor/bin/sail up -d
    ```

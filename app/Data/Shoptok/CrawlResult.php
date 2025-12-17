@@ -27,9 +27,9 @@ namespace App\Data\Shoptok;
 readonly class CrawlResult
 {
     /**
-     * @param string $html          The raw HTML content of the crawled page.
-     * @param string $url           The full URL that was fetched.
-     * @param float  $executionTime How long it took to fetch the page (in seconds).
+     * @param string $html The raw HTML content of the crawled page.
+     * @param string $url The full URL that was fetched.
+     * @param float $executionTime How long it took to fetch the page (in seconds).
      */
     public function __construct(
         public string $html,
