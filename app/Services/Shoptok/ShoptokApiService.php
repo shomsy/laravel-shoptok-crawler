@@ -12,13 +12,30 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * 🌐 ShoptokApiService
+ *
+ * Handles low-level HTTP communication with the Shoptok website.
+ * Used by crawler services to fetch raw HTML pages safely and efficiently.
+ *
+ * Responsibilities:
+ * - Sends GET requests with retry logic and custom headers.
+ * - Maintains cookies between requests to appear as a real browser.
+ * - Detects blocks by Shoptok’s WAF (403).
+ * - Wraps the result in a {@see CrawlResult} object for consistency.
+ */
 final class ShoptokApiService
 {
+    /** Default HTTP timeout (in seconds). */
     private const TIMEOUT_SECONDS = 20;
+
+    /** Number of automatic retries for transient errors. */
     private const RETRY_TIMES = 2;
+
+    /** Delay between retries (in milliseconds). */
     private const RETRY_SLEEP_MS = 1500;
 
-    // Persist cookies across requests
+    /** Shared cookie jar for all requests (simulates browser session). */
     private readonly CookieJar $cookieJar;
 
     public function __construct()
@@ -27,68 +44,84 @@ final class ShoptokApiService
     }
 
     /**
-     * Fetch raw HTML from Shoptok via HTTP.
+     * Fetches a Shoptok page and returns its HTML content.
      *
-     * - Returns null if request is blocked (403 / WAF)
-     * - Throws for unexpected HTTP errors (5xx, network issues)
+     * - Returns `null` if blocked by WAF (403).
+     * - Retries failed requests up to {@see RETRY_TIMES}.
+     * - Throws for unrecoverable network or server errors.
      *
-     * @throws RequestException
-     * @throws ConnectionException
+     * @param string $url The full URL to fetch.
+     *
+     * @return CrawlResult|null The HTML and metadata, or null if blocked.
+     *
+     * @throws RequestException|ConnectionException
      */
-    public function getHtml(string $url): ?CrawlResult
+    public function getHtml(string $url) : CrawlResult|null
     {
-        $startTime = microtime(true);
+        $startTime = microtime(as_float: true);
 
         $response = $this->makeRequest(url: $url);
 
+        // Block detection (403 Forbidden → WAF)
         if ($this->isBlocked(response: $response)) {
-            Log::warning(message: 'Shoptok request blocked by WAF (403)', context: [
-                'url' => $url,
+            Log::warning(message: 'Shoptok request blocked by WAF', context: [
+                'url'    => $url,
                 'status' => $response->status(),
             ]);
 
             return null;
         }
 
-        if (!$response->successful()) {
-            // Legitimate application or network failure
+        // Throw for other HTTP or connection issues
+        if (! $response->successful()) {
             $response->throw();
         }
 
-        $duration = microtime(true) - $startTime;
+        $duration = microtime(as_float: true) - $startTime;
 
         return new CrawlResult(
-            html: $response->body(),
-            url: $url,
-            executionTime: round($duration, 4)
+            html         : $response->body(),
+            url          : $url,
+            executionTime: round(num: $duration, precision: 4)
         );
     }
 
     /**
+     * Performs the actual HTTP request with retry and cookie persistence.
+     *
      * @throws ConnectionException
      */
-    private function makeRequest(string $url): Response
+    private function makeRequest(string $url) : Response
     {
         return Http::timeout(seconds: self::TIMEOUT_SECONDS)
             ->retry(
-                times: self::RETRY_TIMES,
+                times            : self::RETRY_TIMES,
                 sleepMilliseconds: self::RETRY_SLEEP_MS,
-                throw: false // 🔑 critical: do NOT throw on 4xx
+                throw            : false // Don’t throw on 4xx (handled manually)
             )
-            ->withOptions([
-                'cookies' => $this->cookieJar, // 🍪 Use persistent cookie jar
-                'debug' => false,
-            ])
+            ->withOptions(options: [
+                                       'cookies' => $this->cookieJar,
+                                       'debug'   => false,
+                                   ])
             ->withHeaders(headers: $this->defaultHeaders())
             ->get(url: $url);
     }
 
-    private function defaultHeaders(): array
+    /**
+     * Default HTTP headers to mimic a real browser.
+     *
+     * These headers (User-Agent, Accept-Language, etc.)
+     * are loaded from `config/shoptok.php` for easy maintenance.
+     */
+    private function defaultHeaders() : array
     {
         return config(key: 'shoptok.headers', default: []);
     }
 
-    private function isBlocked(Response $response): bool
+    /**
+     * Detects if the request was blocked by Shoptok’s firewall.
+     */
+    private function isBlocked(Response $response) : bool
     {
         return $response->status() === 403;
     }

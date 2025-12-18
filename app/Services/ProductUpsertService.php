@@ -61,38 +61,38 @@ final class ProductUpsertService
      *
      * @param array<int, array<string, mixed>> $items
      *        List of product data arrays parsed from HTML.
-     * @param Category $category
+     * @param Category                         $category
      *        The category these products belong to.
      *
      * @return int
      *         Number of affected rows in the database.
      */
-    public function upsertBatch(array $items, Category $category): int
+    public function upsertBatch(array $items, Category $category) : int
     {
         if (empty($items)) {
             return 0;
         }
 
-        $now = now();
+        $now        = now();
         $upsertData = [];
 
         // 🧮 Build dataset for DB batch upsert
-        if (count($items) > 0) {
-            \Illuminate\Support\Facades\Log::info("Upserting Batch of " . count($items) . " items. Sample Brand: " . ($items[0]['brand'] ?? 'NULL'));
+        if (count(value: $items) > 0) {
+            Log::info(message: "Upserting Batch of " . count(value: $items) . " items. Sample Brand: " . ($items[0]['brand'] ?? 'NULL'));
         }
 
         foreach ($items as $item) {
             $upsertData[] = [
                 'external_id' => $item['external_id'],
-                'name' => $item['name'],
-                'brand' => $item['brand'] ?? null,
-                'price' => $item['price'],
-                'currency' => $item['currency'] ?? 'EUR',
-                'image_url' => $item['image_url'],
+                'name'        => $item['name'],
+                'brand'       => $item['brand'] ?? null,
+                'price'       => $item['price'],
+                'currency'    => $item['currency'] ?? 'EUR',
+                'image_url'   => $item['image_url'],
                 'product_url' => $item['product_url'],
                 'category_id' => $category->id,
-                'created_at' => $now,
-                'updated_at' => $now,
+                'created_at'  => $now,
+                'updated_at'  => $now,
             ];
         }
 
@@ -101,18 +101,18 @@ final class ProductUpsertService
         $totalAffected = 0;
         foreach (array_chunk(array: $upsertData, length: 1000) as $chunk) {
             $totalAffected += Product::upsert(
-                values: $chunk,
+                values  : $chunk,
                 uniqueBy: ['external_id'],
-                update: [
-                    'name',
-                    'brand',
-                    'price',
-                    'currency',
-                    'image_url',
-                    'product_url',
-                    'category_id',
-                    'updated_at'
-                ]
+                update  : [
+                              'name',
+                              'brand',
+                              'price',
+                              'currency',
+                              'image_url',
+                              'product_url',
+                              'category_id',
+                              'updated_at'
+                          ]
             );
         }
 
@@ -133,7 +133,7 @@ final class ProductUpsertService
      *
      * @param array<string, mixed> $data
      *        Parsed product data array (from parser service).
-     * @param Category $category
+     * @param Category             $category
      *        The category this product belongs to.
      *
      * @return Product
@@ -142,34 +142,34 @@ final class ProductUpsertService
      * @throws RuntimeException
      *         If a database error occurs (wrapped from QueryException).
      */
-    public function upsert(array $data, Category $category): Product
+    public function upsert(array $data, Category $category) : Product
     {
         try {
             // 🚀 Atomic “updateOrCreate” ensures idempotent writes.
             // If the record exists → update. Else → insert.
             return Product::updateOrCreate(
                 attributes: ['external_id' => $data['external_id']],
-                values: [
-                    'name' => $data['name'],
-                    'brand' => $data['brand'] ?? null,
-                    'price' => $data['price'],
-                    'currency' => $data['currency'] ?? 'EUR',
-                    'image_url' => $data['image_url'],
-                    'product_url' => $data['product_url'],
-                    'category_id' => $category->id,
-                ]
+                values    : [
+                                'name'        => $data['name'],
+                                'brand'       => $data['brand'] ?? null,
+                                'price'       => $data['price'],
+                                'currency'    => $data['currency'] ?? 'EUR',
+                                'image_url'   => $data['image_url'],
+                                'product_url' => $data['product_url'],
+                                'category_id' => $category->id,
+                            ]
             );
         } catch (QueryException|Throwable $e) {
             // 🧯 Defensive error handling — catch DB-level issues cleanly.
             Log::error(message: 'Product upsert failed', context: [
                 'external_id' => $data['external_id'] ?? null,
-                'name' => $data['name'] ?? 'unknown',
-                'error' => $e->getMessage(),
+                'name'        => $data['name'] ?? 'unknown',
+                'error'       => $e->getMessage(),
             ]);
 
             throw new RuntimeException(
-                message: sprintf('Failed to upsert product "%s"', $data['name'] ?? 'unknown'),
-                code: 0,
+                message : sprintf('Failed to upsert product "%s"', $data['name'] ?? 'unknown'),
+                code    : 0,
                 previous: $e
             );
         }

@@ -7,18 +7,12 @@ use Tests\TestCase;
 
 /**
  * Unit Tests for ShoptokCategoryParserService
- * 
+ *
  * Tests the service responsible for extracting subcategory links from HTML.
  */
 class ShoptokCategoryParserServiceTest extends TestCase
 {
     private ShoptokCategoryParserService $parser;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->parser = new ShoptokCategoryParserService();
-    }
 
     /**
      * Test: Parse subcategory links from HTML
@@ -26,24 +20,24 @@ class ShoptokCategoryParserServiceTest extends TestCase
     public function test_parses_subcategory_links()
     {
         $html = <<<HTML
-        <html>
-            <body>
-                <a href="/televizorji/cene/206">Televizorji</a>
-                <a href="/tv-dodatki/cene/258">TV dodatki</a>
-                <a href="/other-category/123">Other</a>
-            </body>
-        </html>
-        HTML;
+            <html>
+                <body>
+                    <a href="/televizorji/cene/206">Televizorji</a>
+                    <a href="/tv-dodatki/cene/258">TV dodatki</a>
+                    <a href="/other-category/123">Other</a>
+                </body>
+            </html>
+            HTML;
 
-        $result = $this->parser->parseSubcategories($html);
+        $result = $this->parser->parseSubcategories(html: $html);
 
-        $this->assertIsArray($result);
-        $this->assertCount(2, $result); // Only Televizorji and TV dodatki
+        $this->assertIsArray(actual: $result);
+        $this->assertCount(expectedCount: 2, haystack: $result); // Only Televizorji and TV dodatki
 
         foreach ($result as $item) {
-            $this->assertArrayHasKey('name', $item);
-            $this->assertArrayHasKey('slug', $item);
-            $this->assertArrayHasKey('url', $item);
+            $this->assertArrayHasKey(key: 'name', array: $item);
+            $this->assertArrayHasKey(key: 'slug', array: $item);
+            $this->assertArrayHasKey(key: 'url', array: $item);
         }
     }
 
@@ -54,10 +48,10 @@ class ShoptokCategoryParserServiceTest extends TestCase
     {
         $html = '<html><body><p>No categories here</p></body></html>';
 
-        $result = $this->parser->parseSubcategories($html);
+        $result = $this->parser->parseSubcategories(html: $html);
 
-        $this->assertIsArray($result);
-        $this->assertEmpty($result);
+        $this->assertIsArray(actual: $result);
+        $this->assertEmpty(actual: $result);
     }
 
     /**
@@ -67,9 +61,9 @@ class ShoptokCategoryParserServiceTest extends TestCase
     {
         $html = '<html><body><div class="broken';
 
-        $result = $this->parser->parseSubcategories($html);
+        $result = $this->parser->parseSubcategories(html: $html);
 
-        $this->assertIsArray($result);
+        $this->assertIsArray(actual: $result);
     }
 
     /**
@@ -78,18 +72,18 @@ class ShoptokCategoryParserServiceTest extends TestCase
     public function test_filters_non_whitelisted_categories()
     {
         $html = <<<HTML
-        <html>
-            <body>
-                <a href="/televizorji/cene/206">Televizorji</a>
-                <a href="/random-category/123">Random Category</a>
-            </body>
-        </html>
-        HTML;
+            <html>
+                <body>
+                    <a href="/televizorji/cene/206">Televizorji</a>
+                    <a href="/random-category/123">Random Category</a>
+                </body>
+            </html>
+            HTML;
 
-        $result = $this->parser->parseSubcategories($html);
+        $result = $this->parser->parseSubcategories(html: $html);
 
-        $this->assertCount(1, $result);
-        $this->assertEquals('Televizorji', $result[0]['name']);
+        $this->assertCount(expectedCount: 1, haystack: $result);
+        $this->assertEquals(expected: 'Televizorji', actual: $result[0]['name']);
     }
 
     /**
@@ -97,9 +91,15 @@ class ShoptokCategoryParserServiceTest extends TestCase
      */
     public function test_handles_empty_html()
     {
-        $result = $this->parser->parseSubcategories('');
+        $result = $this->parser->parseSubcategories(html: '');
 
-        $this->assertIsArray($result);
-        $this->assertEmpty($result);
+        $this->assertIsArray(actual: $result);
+        $this->assertEmpty(actual: $result);
+    }
+
+    protected function setUp() : void
+    {
+        parent::setUp();
+        $this->parser = new ShoptokCategoryParserService();
     }
 }

@@ -4,46 +4,49 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Http\Request;
 
 /**
  * 🛍️ **Product Model**
  *
- * Represents a single product that has been crawled from Shoptok and stored locally.
+ * Represents a single product crawled from the Shoptok platform and stored locally.
  *
- * 🧠 Think of this as a “snapshot” of a product listing:
- * - It belongs to a category (like “Televizorji”).
- * - It contains essential info: name, price, currency, image, and link.
- * - It can be re-crawled and updated without creating duplicates.
+ * 🧠 Each product acts as a “snapshot” of a listing, containing:
+ * - Its name, price, currency, brand, and image
+ * - A relation to its category
+ * - A stable `external_id` for deduplication across crawls
  *
- * **Why it exists:**
- * - Stores parsed data from the crawler in a normalized structure.
- * - Enables fast filtering, pagination, and display on the frontend.
- * - The `external_id` keeps data consistent even after multiple crawls.
+ * **Purpose:**
+ * - Centralized product storage and normalization
+ * - Supports searching, filtering, and sorting for the frontend API
+ * - Efficient updates using {@see \App\Services\ProductUpsertService}
  *
  * **Database Table:** `products`
  *
- * **Example:**
+ * **Example Row:**
  * ```
- * | id | name          | price  | category_id |
- * |----|----------------|--------|--------------|
- * | 1  | LG OLED55...   | 1299.99| 2            |
+ * | id | name              | price   | category_id |
+ * |----|-------------------|---------|--------------|
+ * |  1 | LG OLED55 CX 4K   | 1299.99 | 2            |
  * ```
  */
 final class Product extends Model
 {
-    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+    use HasFactory;
 
     /**
-     * 🧱 The attributes that are mass assignable.
+     * 🧱 Attributes that can be mass-assigned.
      *
-     * This allows safe bulk creation or updates through {@see \App\Services\ProductUpsertService}.
+     * Prevents mass-assignment vulnerabilities by explicitly whitelisting
+     * the fields that can be set during creation or updates.
      *
      * @var string[]
      */
-    protected $fillable
-    = [
+    protected $fillable = [
         'external_id',
         'name',
         'price',
@@ -55,86 +58,86 @@ final class Product extends Model
     ];
 
     /**
-     * 💰 Casts numeric fields to proper types.
+     * 💰 Attribute casting.
      *
-     * Here, we ensure that `price` is always treated as a decimal
-     * with exactly two digits after the decimal point.
+     * Ensures numeric precision for the `price` field by automatically
+     * converting it to a decimal with two digits after the point.
      *
      * @var array<string, string>
      */
-    protected $casts
-    = [
+    protected $casts = [
         'price' => 'decimal:2',
     ];
 
     /**
-     * 🔗 Relationship: this product belongs to a single category.
-     *
-     * Example:
-     * ```
-     * $product->category->name; // "Televizorji"
-     * ```
-     *
-     * @return BelongsTo<Category, self>
-     */
-    /**
-     * 🔍 Scope for filtering and sorting products.
+     * 🎯 Dynamic query scope for filtering and sorting products.
      *
      * Handles:
-     * - ?category=slug (Filter by category slug)
-     * - ?brand=name (Filter by name similarity, acting as brand)
-     * - ?sort=price_asc|price_desc (Sorting)
+     * - Filtering by category slug (via related Category model)
+     * - Filtering by brand
+     * - Full-text search in product names
+     * - Sorting by price or date
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param \Illuminate\Http\Request $filters
-     * @return \Illuminate\Database\Eloquent\Builder
+     * Example usage:
+     * ```php
+     * Product::filter(request())->paginate(20);
+     * ```
+     *
+     * @param Builder $query   The query builder instance.
+     * @param Request $filters The current HTTP request with query parameters.
+     *
+     * @return Builder  Modified query builder.
      */
-    public function scopeFilter($query, $filters)
+    public function scopeFilter(Builder $query, Request $filters) : Builder
     {
-        // 1. Filter by Category Slug
-        if ($filters->filled('category')) {
-            $query->whereHas('category', function ($q) use ($filters) {
-                $q->where('slug', $filters->input('category'));
+        return $query
+            // 🔎 Filter by category slug (joins Category relation only when provided)
+            ->when(
+                value   : $filters->filled(key: 'category'),
+                callback: function (Builder $q) use ($filters) {
+                    $q->whereHas(
+                        relation: 'category',
+                        callback: fn (Builder $c) => $c->where(column: 'slug', operator: $filters->input(key: 'category'))
+                    );
+                })
+
+            // 🏷️ Filter by brand name
+            ->when(
+                value   : $filters->filled(key: 'brand'),
+                callback: fn (Builder $q) => $q->where(column: 'brand', operator: $filters->input(key: 'brand'))
+            )
+
+            // 🔍 Keyword search in product name
+            ->when(
+                value   : $filters->filled(key: 'search'),
+                callback: fn (Builder $q) => $q->where(column: 'name', operator: 'LIKE', value: '%' . $filters->input(key: 'search') . '%')
+            )
+
+            // ⚙️ Sorting logic
+            ->tap(function (Builder $q) use ($filters) {
+                $sort = $filters->input(key: 'sort');
+
+                match ($sort) {
+                    'price_asc'  => $q->orderBy(column: 'price', direction: 'asc'),
+                    'price_desc' => $q->orderBy(column: 'price', direction: 'desc'),
+                    default      => $q->latest(), // Fallback: sort by created_at DESC
+                };
             });
-        }
-
-        // 2. Filter by "Brand"
-        if ($filters->filled('brand')) {
-            $brand = $filters->input('brand');
-            $query->where('brand', $brand);
-        }
-
-        // 3. Filter by Search (Name)
-        if ($filters->filled('search')) {
-            $search = $filters->input('search');
-            $query->where('name', 'LIKE', "%{$search}%");
-        }
-
-        // 4. Sorting
-        if ($filters->filled('sort')) {
-            match ($filters->input('sort')) {
-                'price_asc' => $query->orderBy('price', 'asc'),
-                'price_desc' => $query->orderBy('price', 'desc'),
-                default => $query->latest(), // Fallback
-            };
-        } else {
-            $query->latest(); // Default sort
-        }
-
-        return $query;
     }
 
     /**
-     * 🔗 Relationship: this product belongs to a single category.
+     * 🔗 Relationship: Product belongs to a single Category.
+     *
+     * Provides access to the parent category that this product belongs to.
      *
      * Example:
-     * ```
+     * ```php
      * $product->category->name; // "Televizorji"
      * ```
      *
      * @return BelongsTo<Category, self>
      */
-    public function category(): BelongsTo
+    public function category() : BelongsTo
     {
         return $this->belongsTo(related: Category::class);
     }

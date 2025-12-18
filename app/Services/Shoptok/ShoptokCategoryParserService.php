@@ -47,7 +47,7 @@ final class ShoptokCategoryParserService
      * The output array contains clean subcategory data ready to be stored
      * in the database or passed to the crawler for product extraction.
      */
-    public function parseSubcategories(string $html): array
+    public function parseSubcategories(string $html) : array
     {
         // Symfony DomCrawler: allows CSS/XPath queries on HTML documents
         $dom = new Crawler(node: $html);
@@ -94,7 +94,7 @@ final class ShoptokCategoryParserService
              * This avoids mistakenly catching similar strings
              * (for example, "Nosilci za TV" or "OLED TV").
              */
-            if (!in_array(needle: $lowerName, haystack: ['televizorji', 'tv dodatki'])) {
+            if (! in_array(needle: $lowerName, haystack: ['televizorji', 'tv dodatki'])) {
                 continue;
             }
 
@@ -111,7 +111,7 @@ final class ShoptokCategoryParserService
             $out[$normalizedUrl] = [
                 'name' => $name,
                 'slug' => Str::slug(title: $name),
-                'url' => $normalizedUrl,
+                'url'  => $normalizedUrl,
             ];
         }
 
@@ -133,9 +133,10 @@ final class ShoptokCategoryParserService
      * ------------------------------------------------------
      *
      * @param string $url The raw link extracted from the HTML.
+     *
      * @return string        A fully qualified URL.
      */
-    private function normalizeUrl(string $url): string
+    private function normalizeUrl(string $url) : string
     {
         // If the URL already starts with http/https, it’s full
         if (str_starts_with(haystack: $url, needle: 'http://') || str_starts_with(haystack: $url, needle: 'https://')) {

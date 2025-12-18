@@ -1,9 +1,9 @@
 <template>
-    <div>
-        <AppHeader/>
-        <router-view/>
-        <AppFooter/>
-    </div>
+  <div>
+    <AppHeader/>
+    <router-view/>
+    <AppFooter/>
+  </div>
 </template>
 
 <script setup>

@@ -16,138 +16,158 @@ use RuntimeException;
 use Throwable;
 
 /**
- * 🤖 **The Browser Operator (Selenium Service)**
+ * 🧠 ShoptokSeleniumService
  *
- * This class is responsible for driving the "invisible" Chrome browser.
+ * Controls the headless Chrome browser (via Selenium) to fetch pages that
+ * require JavaScript execution, CAPTCHA handling, or bot evasion.
  *
- * **Why use this instead of a simple request?**
- * Many modern sites use JavaScript to load products or have "Are you a robot?" checks.
- * This service launches a real browser session, waits for the page to "settle" (load JS),
- * and tricks the server into thinking we are a real human on a laptop.
+ * Used when simple HTTP requests can’t return the full rendered HTML.
  *
- * **Key responsibilities:**
- * 1. Start a fresh browser (with a fake User-Agent).
- * 2. Go to a URL.
- * 3. Wait for the content to actually appear.
- * 4. Return the raw HTML for parsing.
+ * Responsibilities:
+ * - Launches a fresh headless Chrome instance.
+ * - Navigates to the given URL.
+ * - Waits for the page to fully load and render.
+ * - Returns clean HTML for parsing.
  */
 final readonly class ShoptokSeleniumService
 {
+    /** Connection timeout for Selenium (in ms). */
     private const DEFAULT_TIMEOUT_MS = 15000;
+
+    /** Maximum request duration (in ms). */
     private const REQUEST_TIMEOUT_MS = 60000;
+
+    /** Explicit wait time for page readiness (in seconds). */
     private const WAIT_TIMEOUT_SEC = 10;
 
     public function __construct(
         private LoggerInterface  $logger,
         private ConfigRepository $config,
-    )
-    {
-    }
+    ) {}
 
     /**
-     * Fetch HTML content from the target URL via Selenium.
+     * Fetch a fully rendered HTML page through Selenium.
+     *
+     * Used for Shoptok pages that require JS execution or dynamic rendering.
      *
      * @param string $url
      *
-     * @return CrawlResult Result object containing HTML and metadata.
-     * @throws RuntimeException If crawling fails definitively.
+     * @return CrawlResult
+     *
+     * @throws RuntimeException If the crawl fails irrecoverably.
      */
-    public function getHtml(string $url): CrawlResult
+    public function getHtml(string $url) : CrawlResult
     {
-        $startTime = microtime(true);
-        $driver = null;
+        $startTime = microtime(as_float: true);
+        $driver    = null;
 
         try {
-            $this->logger->info('Initializing Selenium fetch', ['url' => $url]);
+            $this->logger->info(message: 'Starting Selenium fetch', context: ['url' => $url]);
 
-            // 1. Initialize Driver
+            // Create a Chrome WebDriver session
             $driver = $this->createDriver();
 
-            // 2. Navigate
-            $driver->get($url);
+            // Navigate to the target URL
+            $driver->get(url: $url);
 
-            // 3. Wait Strategy (Explicit Wait preferred over sleep)
-            $this->waitForPageLoad($driver);
+            // Wait for page to finish rendering
+            $this->waitForPageLoad(driver: $driver);
 
-            // 4. Capture Content
+            // Extract full rendered HTML
             $html = $driver->getPageSource();
 
-            // 5. Validation / Checks
-            $this->ensureContentIsValid($html, $url);
+            // Validate that the HTML is not blocked or incomplete
+            $this->ensureContentIsValid(html: $html, url: $url);
 
-            $duration = microtime(true) - $startTime;
+            $duration = microtime(as_float: true) - $startTime;
 
             return new CrawlResult(
-                html: $html,
-                url: $url,
-                executionTime: round($duration, 4)
+                html         : $html,
+                url          : $url,
+                executionTime: round(num: $duration, precision: 4)
             );
         } catch (Throwable $e) {
-            $this->logger->error('Selenium crawl failed', [
-                'url' => $url,
+            $this->logger->error(message: 'Selenium crawl failed', context: [
+                'url'   => $url,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
-            throw new RuntimeException("Failed to crawl URL: {$url}", previous: $e);
+            throw new RuntimeException(message: "Failed to crawl URL: {$url}", code: 0, previous: $e);
         } finally {
-            // Guarantee resource cleanup
+            // Always close the browser session, even on failure
             $driver?->quit();
         }
     }
 
     /**
-     * Configures and creates the WebDriver instance.
+     * Initialize a new headless Chrome WebDriver session.
      */
-    private function createDriver(): RemoteWebDriver
+    private function createDriver() : RemoteWebDriver
     {
-        $seleniumUrl = $this->config->get('services.selenium.host', 'http://selenium:4444/wd/hub');
+        $seleniumUrl = $this->config->get(key: 'services.selenium.host', default: 'http://selenium:4444/wd/hub');
 
         $options = new ChromeOptions();
-        $options->addArguments([
-            '--headless',
-            '--no-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-blink-features=AutomationControlled',
-            '--user-agent=' . $this->getUserAgent(),
-        ]);
+        $options->addArguments(arguments: [
+                                              '--headless',
+                                              '--no-sandbox',
+                                              '--disable-dev-shm-usage',
+                                              '--disable-blink-features=AutomationControlled',
+                                              '--user-agent=' . $this->getUserAgent(),
+                                          ]);
 
         $capabilities = DesiredCapabilities::chrome();
-        $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+        $capabilities->setCapability(name: ChromeOptions::CAPABILITY, value: $options);
 
-        // Ideally, RemoteWebDriver::create should be wrapped in a factory to be mockable,
-        // but for a pragmatic Laravel service, this is acceptable if integration tests are used.
         return RemoteWebDriver::create(
-            selenium_server_url: $seleniumUrl,
-            desired_capabilities: $capabilities,
+            selenium_server_url     : $seleniumUrl,
+            desired_capabilities    : $capabilities,
             connection_timeout_in_ms: self::DEFAULT_TIMEOUT_MS,
-            request_timeout_in_ms: self::REQUEST_TIMEOUT_MS,
+            request_timeout_in_ms   : self::REQUEST_TIMEOUT_MS
         );
     }
 
-    private function getUserAgent(): string
+    /**
+     * Get the User-Agent string for Selenium sessions.
+     *
+     * This helps disguise requests as coming from a real browser.
+     */
+    private function getUserAgent() : string
     {
-        return $this->config->get(key: 'shoptok.headers.User-Agent', default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
+        return $this->config->get(
+            key    : 'shoptok.headers.User-Agent',
+            default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        );
     }
 
-    private function waitForPageLoad(RemoteWebDriver $driver): void
+    /**
+     * Wait until the page’s <body> is rendered and stable.
+     *
+     * Prevents parsing before JavaScript content loads.
+     */
+    private function waitForPageLoad(RemoteWebDriver $driver) : void
     {
-        // Wait until <body> is present in DOM
-        $driver->wait(self::WAIT_TIMEOUT_SEC)->until(
-            WebDriverExpectedCondition::presenceOfElementLocated(WebDriverBy::cssSelector('body'))
+        $driver->wait(timeout_in_second: self::WAIT_TIMEOUT_SEC)->until(
+            func_or_ec: WebDriverExpectedCondition::presenceOfElementLocated(
+                          by: WebDriverBy::cssSelector(css_selector: 'body')
+                      )
         );
 
-        // Heuristic delay for Hydration/JS-heavy sites (Cloudflare check might need this)
-        usleep(500000); // 500ms
+        // Small delay for heavy JS hydration (Cloudflare, dynamic content)
+        usleep(microseconds: 500_000); // 0.5s
     }
 
-    private function ensureContentIsValid(string $html, string $url): void
+    /**
+     * Check if the HTML content looks like a Cloudflare or CAPTCHA block.
+     *
+     * Logs a warning for visibility — doesn’t throw immediately.
+     */
+    private function ensureContentIsValid(string $html, string $url) : void
     {
-        if (str_contains($html, 'Just a moment...') || str_contains($html, 'cf-browser-verification')) {
-            $this->logger->warning('Cloudflare challenge detected.', ['url' => $url]);
-            // We specifically do NOT throw here if we want to return the challenge HTML for debugging,
-            // OR we throw a specialized RateLimitException if we want to retry later.
-            // For now, logging behavior matches your original intent.
+        if (
+            str_contains(haystack: $html, needle: 'Just a moment...')
+            || str_contains(haystack: $html, needle: 'cf-browser-verification')
+        ) {
+            $this->logger->warning(message: 'Cloudflare challenge detected', context: compact(var_name: 'url'));
         }
     }
 }

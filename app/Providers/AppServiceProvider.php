@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function register(): void
+    public function register() : void
     {
         $this->app->singleton(abstract: ShoptokSeleniumService::class);
     }
@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot(): void
+    public function boot() : void
     {
         Paginator::useBootstrapFive();
     }

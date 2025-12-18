@@ -12,31 +12,25 @@ class CategoryHierarchyTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        Cache::flush(); // Ensure clean state for every test
-    }
-
     /**
      * Test logic: Root "TV Sprejemniki" should Recursively fetch children products.
      */
     public function test_root_category_fetches_recursive_products()
     {
         // Setup Hierarchy: TV Sprejemniki -> Televizorji
-        $root = Category::factory()->create(['slug' => 'tv-sprejemniki', 'name' => 'TV Sprejemniki']);
-        $child = Category::factory()->create(['parent_id' => $root->id, 'slug' => 'televizorji', 'name' => 'Televizorji']);
+        $root  = Category::factory()->create(attributes: ['slug' => 'tv-sprejemniki', 'name' => 'TV Sprejemniki']);
+        $child = Category::factory()->create(attributes: ['parent_id' => $root->id, 'slug' => 'televizorji', 'name' => 'Televizorji']);
 
         // Create Products
-        Product::factory()->count(3)->create(['category_id' => $root->id]); // 3 in Root
-        Product::factory()->count(5)->create(['category_id' => $child->id]); // 5 in Child
+        Product::factory()->count(count: 3)->create(attributes: ['category_id' => $root->id]); // 3 in Root
+        Product::factory()->count(count: 5)->create(attributes: ['category_id' => $child->id]); // 5 in Child
 
         // Act: Visit Root
-        $response = $this->getJson("/api/categories/{$root->slug}");
+        $response = $this->getJson(uri: "/api/categories/{$root->slug}");
 
         // Assert: Should see ALL 8 products (3 + 5)
-        $response->assertStatus(200);
-        $this->assertEquals(8, $response->json('products.total'), "Root category should show recursive total.");
+        $response->assertStatus(status: 200);
+        $this->assertEquals(expected: 8, actual: $response->json(key: 'products.total'), message: "Root category should show recursive total.");
     }
 
     /**
@@ -45,19 +39,19 @@ class CategoryHierarchyTest extends TestCase
     public function test_subcategory_uses_strict_filtering()
     {
         // Setup Hierarchy: TV Sprejemniki -> Televizorji
-        $root = Category::factory()->create(['slug' => 'tv-sprejemniki']);
-        $child = Category::factory()->create(['parent_id' => $root->id, 'slug' => 'televizorji']);
+        $root  = Category::factory()->create(attributes: ['slug' => 'tv-sprejemniki']);
+        $child = Category::factory()->create(attributes: ['parent_id' => $root->id, 'slug' => 'televizorji']);
 
         // Create Products
-        Product::factory()->count(3)->create(['category_id' => $root->id]); // 3 in Root
-        Product::factory()->count(5)->create(['category_id' => $child->id]); // 5 in Child
+        Product::factory()->count(count: 3)->create(attributes: ['category_id' => $root->id]); // 3 in Root
+        Product::factory()->count(count: 5)->create(attributes: ['category_id' => $child->id]); // 5 in Child
 
         // Act: Visit Child
-        $response = $this->getJson("/api/categories/{$child->slug}");
+        $response = $this->getJson(uri: "/api/categories/{$child->slug}");
 
         // Assert: Should see ONLY 5 products
-        $response->assertStatus(200);
-        $this->assertEquals(5, $response->json('products.total'), "Subcategory should use strict filtering.");
+        $response->assertStatus(status: 200);
+        $this->assertEquals(expected: 5, actual: $response->json(key: 'products.total'), message: "Subcategory should use strict filtering.");
     }
 
     /**
@@ -66,22 +60,22 @@ class CategoryHierarchyTest extends TestCase
     public function test_circular_dependency_is_handled_safely()
     {
         // Setup Cycle: A -> B -> A
-        $catA = Category::factory()->create(['slug' => 'cat-a', 'name' => 'Category A']);
-        $catB = Category::factory()->create(['slug' => 'cat-b', 'name' => 'Category B', 'parent_id' => $catA->id]);
+        $catA = Category::factory()->create(attributes: ['slug' => 'cat-a', 'name' => 'Category A']);
+        $catB = Category::factory()->create(attributes: ['slug' => 'cat-b', 'name' => 'Category B', 'parent_id' => $catA->id]);
 
         // Complete the cycle
-        $catA->update(['parent_id' => $catB->id]);
+        $catA->update(attributes: ['parent_id' => $catB->id]);
 
         // Act: Visit A
         // If recursion logic is broken, this will Timeout or 500
-        $response = $this->getJson("/api/categories/{$catA->slug}");
+        $response = $this->getJson(uri: "/api/categories/{$catA->slug}");
 
         // Assert: 200 OK
-        $response->assertStatus(200);
+        $response->assertStatus(status: 200);
 
         // Verify Breadcrumbs didn't explode relative to depth limit
-        $breadcrumbs = $response->json('breadcrumbs');
-        $this->assertLessThanOrEqual(10, count($breadcrumbs), "Breadcrumbs should respect depth limit.");
+        $breadcrumbs = $response->json(key: 'breadcrumbs');
+        $this->assertLessThanOrEqual(maximum: 10, actual: count(value: $breadcrumbs), message: "Breadcrumbs should respect depth limit.");
     }
 
     /**
@@ -89,23 +83,23 @@ class CategoryHierarchyTest extends TestCase
      */
     public function test_sidebar_enforces_manual_hierarchy()
     {
-        $root = Category::factory()->create(['slug' => 'tv-sprejemniki', 'name' => 'TV Sprejemniki']);
-        $other = Category::factory()->create(['slug' => 'other', 'name' => 'Other Category']);
+        $root  = Category::factory()->create(attributes: ['slug' => 'tv-sprejemniki', 'name' => 'TV Sprejemniki']);
+        $other = Category::factory()->create(attributes: ['slug' => 'other', 'name' => 'Other Category']);
 
         // Act: Category Page (Using CategoryController@show which returns sidebar_tree)
-        $response = $this->getJson("/api/categories/{$root->slug}");
+        $response = $this->getJson(uri: "/api/categories/{$root->slug}");
 
-        $response->assertStatus(200);
+        $response->assertStatus(status: 200);
 
-        $sidebar = $response->json('sidebar_tree.data');
+        $sidebar = $response->json(key: 'sidebar_tree.data');
 
         // Assert: Sidebar should have 1 top level item (TV Sprejemniki)
-        $this->assertCount(1, $sidebar);
-        $this->assertEquals('TV Sprejemniki', $sidebar[0]['name']);
+        $this->assertCount(expectedCount: 1, haystack: $sidebar);
+        $this->assertEquals(expected: 'TV Sprejemniki', actual: $sidebar[0]['name']);
 
         // Assert: 'Other Category' should be a child of 'TV Sprejemniki'
-        $this->assertNotEmpty($sidebar[0]['children']);
-        $this->assertEquals('Other Category', $sidebar[0]['children'][0]['name']);
+        $this->assertNotEmpty(actual: $sidebar[0]['children']);
+        $this->assertEquals(expected: 'Other Category', actual: $sidebar[0]['children'][0]['name']);
     }
 
     /**
@@ -114,17 +108,23 @@ class CategoryHierarchyTest extends TestCase
      */
     public function test_responses_are_cached()
     {
-        $root = Category::factory()->create(['slug' => 'tv-sprejemniki']);
-        Product::factory()->count(1)->create(['category_id' => $root->id]);
+        $root = Category::factory()->create(attributes: ['slug' => 'tv-sprejemniki']);
+        Product::factory()->count(count: 1)->create(attributes: ['category_id' => $root->id]);
 
         // 1st Request (Miss)
-        $response1 = $this->getJson("/api/categories/{$root->slug}");
-        $response1->assertStatus(200);
+        $response1 = $this->getJson(uri: "/api/categories/{$root->slug}");
+        $response1->assertStatus(status: 200);
 
         // 2nd Request (Hit)
-        $response2 = $this->getJson("/api/categories/{$root->slug}");
-        $response2->assertStatus(200);
+        $response2 = $this->getJson(uri: "/api/categories/{$root->slug}");
+        $response2->assertStatus(status: 200);
 
-        $this->assertEquals($response1->json('data.id'), $response2->json('data.id'));
+        $this->assertEquals(expected: $response1->json(key: 'data.id'), actual: $response2->json(key: 'data.id'));
+    }
+
+    protected function setUp() : void
+    {
+        parent::setUp();
+        Cache::flush(); // Ensure clean state for every test
     }
 }

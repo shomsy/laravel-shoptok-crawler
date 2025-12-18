@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * Unit Tests for Category Model
- * 
+ *
  * Tests model relationships, scopes, and business logic.
  */
 class CategoryModelTest extends TestCase
@@ -22,10 +22,10 @@ class CategoryModelTest extends TestCase
     public function test_category_has_products_relationship()
     {
         $category = Category::factory()->create();
-        Product::factory()->count(3)->create(['category_id' => $category->id]);
+        Product::factory()->count(count: 3)->create(attributes: ['category_id' => $category->id]);
 
-        $this->assertCount(3, $category->products);
-        $this->assertInstanceOf(Product::class, $category->products->first());
+        $this->assertCount(expectedCount: 3, haystack: $category->products);
+        $this->assertInstanceOf(expected: Product::class, actual: $category->products->first());
     }
 
     /**
@@ -33,11 +33,11 @@ class CategoryModelTest extends TestCase
      */
     public function test_category_has_parent_relationship()
     {
-        $parent = Category::factory()->create(['parent_id' => null]);
-        $child = Category::factory()->create(['parent_id' => $parent->id]);
+        $parent = Category::factory()->create(attributes: ['parent_id' => null]);
+        $child  = Category::factory()->create(attributes: ['parent_id' => $parent->id]);
 
-        $this->assertNotNull($child->parent);
-        $this->assertEquals($parent->id, $child->parent->id);
+        $this->assertNotNull(actual: $child->parent);
+        $this->assertEquals(expected: $parent->id, actual: $child->parent->id);
     }
 
     /**
@@ -45,10 +45,10 @@ class CategoryModelTest extends TestCase
      */
     public function test_category_has_children_relationship()
     {
-        $parent = Category::factory()->create(['parent_id' => null]);
-        Category::factory()->count(2)->create(['parent_id' => $parent->id]);
+        $parent = Category::factory()->create(attributes: ['parent_id' => null]);
+        Category::factory()->count(count: 2)->create(attributes: ['parent_id' => $parent->id]);
 
-        $this->assertCount(2, $parent->children);
+        $this->assertCount(expectedCount: 2, haystack: $parent->children);
     }
 
     /**
@@ -56,15 +56,15 @@ class CategoryModelTest extends TestCase
      */
     public function test_roots_scope_returns_only_root_categories()
     {
-        $root1 = Category::factory()->create(['parent_id' => null]);
-        $root2 = Category::factory()->create(['parent_id' => null]);
-        Category::factory()->create(['parent_id' => $root1->id]); // Child
+        $root1 = Category::factory()->create(attributes: ['parent_id' => null]);
+        $root2 = Category::factory()->create(attributes: ['parent_id' => null]);
+        Category::factory()->create(attributes: ['parent_id' => $root1->id]); // Child
 
         $roots = Category::roots()->get();
 
-        $this->assertCount(2, $roots);
-        $this->assertTrue($roots->contains($root1));
-        $this->assertTrue($roots->contains($root2));
+        $this->assertCount(expectedCount: 2, haystack: $roots);
+        $this->assertTrue(condition: $roots->contains(key: $root1));
+        $this->assertTrue(condition: $roots->contains(key: $root2));
     }
 
     /**
@@ -72,10 +72,10 @@ class CategoryModelTest extends TestCase
      */
     public function test_category_can_be_root()
     {
-        $category = Category::factory()->create(['parent_id' => null]);
+        $category = Category::factory()->create(attributes: ['parent_id' => null]);
 
-        $this->assertNull($category->parent_id);
-        $this->assertNull($category->parent);
+        $this->assertNull(actual: $category->parent_id);
+        $this->assertNull(actual: $category->parent);
     }
 
     /**
@@ -84,11 +84,11 @@ class CategoryModelTest extends TestCase
     public function test_category_slug_is_fillable()
     {
         $category = Category::create([
-            'name' => 'Test Category',
-            'slug' => 'test-category',
-        ]);
+                                         'name' => 'Test Category',
+                                         'slug' => 'test-category',
+                                     ]);
 
-        $this->assertEquals('test-category', $category->slug);
+        $this->assertEquals(expected: 'test-category', actual: $category->slug);
     }
 
     /**
@@ -96,12 +96,12 @@ class CategoryModelTest extends TestCase
      */
     public function test_category_supports_deep_nesting()
     {
-        $level1 = Category::factory()->create(['parent_id' => null]);
-        $level2 = Category::factory()->create(['parent_id' => $level1->id]);
-        $level3 = Category::factory()->create(['parent_id' => $level2->id]);
+        $level1 = Category::factory()->create(attributes: ['parent_id' => null]);
+        $level2 = Category::factory()->create(attributes: ['parent_id' => $level1->id]);
+        $level3 = Category::factory()->create(attributes: ['parent_id' => $level2->id]);
 
-        $this->assertEquals($level1->id, $level2->parent_id);
-        $this->assertEquals($level2->id, $level3->parent_id);
-        $this->assertNull($level1->parent_id);
+        $this->assertEquals(expected: $level1->id, actual: $level2->parent_id);
+        $this->assertEquals(expected: $level2->id, actual: $level3->parent_id);
+        $this->assertNull(actual: $level1->parent_id);
     }
 }

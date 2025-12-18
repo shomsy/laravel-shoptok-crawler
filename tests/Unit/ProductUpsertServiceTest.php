@@ -2,15 +2,15 @@
 
 namespace Tests\Unit;
 
-use App\Services\ProductUpsertService;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\ProductUpsertService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
  * Unit Tests for ProductUpsertService
- * 
+ *
  * Tests the database service responsible for upserting products.
  */
 class ProductUpsertServiceTest extends TestCase
@@ -18,14 +18,7 @@ class ProductUpsertServiceTest extends TestCase
     use RefreshDatabase;
 
     private ProductUpsertService $service;
-    private Category $category;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = new ProductUpsertService();
-        $this->category = Category::factory()->create();
-    }
+    private Category             $category;
 
     /**
      * Test: Single product upsert creates new product
@@ -34,21 +27,21 @@ class ProductUpsertServiceTest extends TestCase
     {
         $data = [
             'external_id' => 'test-123',
-            'name' => 'Test Product',
-            'brand' => 'TestBrand',
-            'price' => 99.99,
-            'currency' => 'EUR',
-            'image_url' => 'https://example.com/image.jpg',
+            'name'        => 'Test Product',
+            'brand'       => 'TestBrand',
+            'price'       => 99.99,
+            'currency'    => 'EUR',
+            'image_url'   => 'https://example.com/image.jpg',
             'product_url' => 'https://example.com/product',
         ];
 
-        $product = $this->service->upsert($data, $this->category);
+        $product = $this->service->upsert(data: $data, category: $this->category);
 
-        $this->assertInstanceOf(Product::class, $product);
-        $this->assertEquals('test-123', $product->external_id);
-        $this->assertEquals('Test Product', $product->name);
-        $this->assertEquals(99.99, $product->price);
-        $this->assertEquals($this->category->id, $product->category_id);
+        $this->assertInstanceOf(expected: Product::class, actual: $product);
+        $this->assertEquals(expected: 'test-123', actual: $product->external_id);
+        $this->assertEquals(expected: 'Test Product', actual: $product->name);
+        $this->assertEquals(expected: 99.99, actual: $product->price);
+        $this->assertEquals(expected: $this->category->id, actual: $product->category_id);
     }
 
     /**
@@ -57,30 +50,30 @@ class ProductUpsertServiceTest extends TestCase
     public function test_upsert_updates_existing_product()
     {
         // Create initial product
-        $product = Product::factory()->create([
-            'external_id' => 'test-456',
-            'name' => 'Old Name',
-            'price' => 50.00,
-            'category_id' => $this->category->id,
-        ]);
+        $product = Product::factory()->create(attributes: [
+                                                              'external_id' => 'test-456',
+                                                              'name'        => 'Old Name',
+                                                              'price'       => 50.00,
+                                                              'category_id' => $this->category->id,
+                                                          ]);
 
         // Upsert with new data
         $data = [
             'external_id' => 'test-456',
-            'name' => 'Updated Name',
-            'brand' => 'NewBrand',
-            'price' => 75.00,
-            'currency' => 'EUR',
-            'image_url' => 'https://example.com/new.jpg',
+            'name'        => 'Updated Name',
+            'brand'       => 'NewBrand',
+            'price'       => 75.00,
+            'currency'    => 'EUR',
+            'image_url'   => 'https://example.com/new.jpg',
             'product_url' => 'https://example.com/new',
         ];
 
-        $updated = $this->service->upsert($data, $this->category);
+        $updated = $this->service->upsert(data: $data, category: $this->category);
 
-        $this->assertEquals($product->id, $updated->id);
-        $this->assertEquals('Updated Name', $updated->name);
-        $this->assertEquals(75.00, $updated->price);
-        $this->assertEquals('NewBrand', $updated->brand);
+        $this->assertEquals(expected: $product->id, actual: $updated->id);
+        $this->assertEquals(expected: 'Updated Name', actual: $updated->name);
+        $this->assertEquals(expected: 75.00, actual: $updated->price);
+        $this->assertEquals(expected: 'NewBrand', actual: $updated->brand);
     }
 
     /**
@@ -91,29 +84,29 @@ class ProductUpsertServiceTest extends TestCase
         $items = [
             [
                 'external_id' => 'batch-1',
-                'name' => 'Product 1',
-                'brand' => 'Brand A',
-                'price' => 100.00,
-                'currency' => 'EUR',
-                'image_url' => 'https://example.com/1.jpg',
+                'name'        => 'Product 1',
+                'brand'       => 'Brand A',
+                'price'       => 100.00,
+                'currency'    => 'EUR',
+                'image_url'   => 'https://example.com/1.jpg',
                 'product_url' => 'https://example.com/1',
             ],
             [
                 'external_id' => 'batch-2',
-                'name' => 'Product 2',
-                'brand' => 'Brand B',
-                'price' => 200.00,
-                'currency' => 'EUR',
-                'image_url' => 'https://example.com/2.jpg',
+                'name'        => 'Product 2',
+                'brand'       => 'Brand B',
+                'price'       => 200.00,
+                'currency'    => 'EUR',
+                'image_url'   => 'https://example.com/2.jpg',
                 'product_url' => 'https://example.com/2',
             ],
         ];
 
-        $affected = $this->service->upsertBatch($items, $this->category);
+        $affected = $this->service->upsertBatch(items: $items, category: $this->category);
 
-        $this->assertGreaterThanOrEqual(2, $affected);
-        $this->assertDatabaseHas('products', ['external_id' => 'batch-1']);
-        $this->assertDatabaseHas('products', ['external_id' => 'batch-2']);
+        $this->assertGreaterThanOrEqual(minimum: 2, actual: $affected);
+        $this->assertDatabaseHas(table: 'products', data: ['external_id' => 'batch-1']);
+        $this->assertDatabaseHas(table: 'products', data: ['external_id' => 'batch-2']);
     }
 
     /**
@@ -122,31 +115,31 @@ class ProductUpsertServiceTest extends TestCase
     public function test_upsert_batch_updates_existing_products()
     {
         // Create existing products
-        Product::factory()->create([
-            'external_id' => 'batch-3',
-            'name' => 'Old Product',
-            'price' => 50.00,
-            'category_id' => $this->category->id,
-        ]);
+        Product::factory()->create(attributes: [
+                                                   'external_id' => 'batch-3',
+                                                   'name'        => 'Old Product',
+                                                   'price'       => 50.00,
+                                                   'category_id' => $this->category->id,
+                                               ]);
 
         $items = [
             [
                 'external_id' => 'batch-3',
-                'name' => 'Updated Product',
-                'brand' => 'Updated Brand',
-                'price' => 150.00,
-                'currency' => 'EUR',
-                'image_url' => 'https://example.com/updated.jpg',
+                'name'        => 'Updated Product',
+                'brand'       => 'Updated Brand',
+                'price'       => 150.00,
+                'currency'    => 'EUR',
+                'image_url'   => 'https://example.com/updated.jpg',
                 'product_url' => 'https://example.com/updated',
             ],
         ];
 
-        $this->service->upsertBatch($items, $this->category);
+        $this->service->upsertBatch(items: $items, category: $this->category);
 
-        $this->assertDatabaseHas('products', [
+        $this->assertDatabaseHas(table: 'products', data: [
             'external_id' => 'batch-3',
-            'name' => 'Updated Product',
-            'price' => 150.00,
+            'name'        => 'Updated Product',
+            'price'       => 150.00,
         ]);
     }
 
@@ -155,8 +148,8 @@ class ProductUpsertServiceTest extends TestCase
      */
     public function test_upsert_batch_handles_empty_array()
     {
-        $affected = $this->service->upsertBatch([], $this->category);
-        $this->assertEquals(0, $affected);
+        $affected = $this->service->upsertBatch(items: [], category: $this->category);
+        $this->assertEquals(expected: 0, actual: $affected);
     }
 
     /**
@@ -166,15 +159,22 @@ class ProductUpsertServiceTest extends TestCase
     {
         $data = [
             'external_id' => 'test-no-brand',
-            'name' => 'Product Without Brand',
-            'price' => 99.99,
-            'currency' => 'EUR',
-            'image_url' => 'https://example.com/image.jpg',
+            'name'        => 'Product Without Brand',
+            'price'       => 99.99,
+            'currency'    => 'EUR',
+            'image_url'   => 'https://example.com/image.jpg',
             'product_url' => 'https://example.com/product',
         ];
 
-        $product = $this->service->upsert($data, $this->category);
+        $product = $this->service->upsert(data: $data, category: $this->category);
 
-        $this->assertNull($product->brand);
+        $this->assertNull(actual: $product->brand);
+    }
+
+    protected function setUp() : void
+    {
+        parent::setUp();
+        $this->service  = new ProductUpsertService();
+        $this->category = Category::factory()->create();
     }
 }

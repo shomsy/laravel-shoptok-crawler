@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * Feature Tests for API Endpoints - Additional Coverage
- * 
+ *
  * Tests edge cases, error handling, and additional scenarios.
  */
 class ApiEndpointTest extends TestCase
@@ -21,17 +21,17 @@ class ApiEndpointTest extends TestCase
      */
     public function test_products_endpoint_handles_empty_database()
     {
-        $response = $this->getJson('/api/products');
+        $response = $this->getJson(uri: '/api/products');
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'products' => [
-                    'meta' => [
-                        'total' => 0,
-                    ],
-                    'data' => [],
-                ],
-            ]);
+        $response->assertStatus(status: 200)
+            ->assertJson(value: [
+                                    'products' => [
+                                        'meta' => [
+                                            'total' => 0,
+                                        ],
+                                        'data' => [],
+                                    ],
+                                ]);
     }
 
 
@@ -40,9 +40,9 @@ class ApiEndpointTest extends TestCase
      */
     public function test_category_endpoint_returns_404_for_invalid_slug()
     {
-        $response = $this->getJson('/api/categories/non-existent-category');
+        $response = $this->getJson(uri: '/api/categories/non-existent-category');
 
-        $response->assertStatus(404);
+        $response->assertStatus(status: 404);
     }
 
     /**
@@ -50,18 +50,18 @@ class ApiEndpointTest extends TestCase
      */
     public function test_products_search_filters_correctly()
     {
-        Product::factory()->create(['name' => 'Samsung TV 55 inch']);
-        Product::factory()->create(['name' => 'LG Monitor 27 inch']);
-        Product::factory()->create(['name' => 'Samsung Phone']);
+        Product::factory()->create(attributes: ['name' => 'Samsung TV 55 inch']);
+        Product::factory()->create(attributes: ['name' => 'LG Monitor 27 inch']);
+        Product::factory()->create(attributes: ['name' => 'Samsung Phone']);
 
-        $response = $this->getJson('/api/products?search=Samsung');
+        $response = $this->getJson(uri: '/api/products?search=Samsung');
 
-        $response->assertStatus(200);
-        $data = $response->json('products.data');
+        $response->assertStatus(status: 200);
+        $data = $response->json(key: 'products.data');
 
-        $this->assertCount(2, $data);
+        $this->assertCount(expectedCount: 2, haystack: $data);
         foreach ($data as $product) {
-            $this->assertStringContainsStringIgnoringCase('Samsung', $product['name']);
+            $this->assertStringContainsStringIgnoringCase(needle: 'Samsung', haystack: $product['name']);
         }
     }
 
@@ -70,22 +70,14 @@ class ApiEndpointTest extends TestCase
      */
     public function test_products_handles_multiple_filters()
     {
-        Product::factory()->create([
-            'name' => 'Samsung TV',
-            'brand' => 'Samsung',
-            'price' => 500,
-        ]);
-        Product::factory()->create([
-            'name' => 'LG TV',
-            'brand' => 'LG',
-            'price' => 600,
-        ]);
+        Product::factory()->create(attributes: ['name' => 'Samsung TV', 'brand' => 'Samsung', 'price' => 500]);
+        Product::factory()->create(attributes: ['name' => 'LG TV', 'brand' => 'LG', 'price' => 600]);
 
-        $response = $this->getJson('/api/products?brand=Samsung&sort=price_asc');
+        $response = $this->getJson(uri: '/api/products?brand=Samsung&sort=price_asc');
 
-        $response->assertStatus(200);
-        $this->assertEquals(1, $response->json('products.meta.total'));
-        $this->assertEquals('Samsung', $response->json('products.data.0.brand'));
+        $response->assertStatus(status: 200);
+        $this->assertEquals(expected: 1, actual: $response->json(key: 'products.meta.total'));
+        $this->assertEquals(expected: 'Samsung', actual: $response->json(key: 'products.data.0.brand'));
     }
 
     /**
@@ -93,25 +85,16 @@ class ApiEndpointTest extends TestCase
      */
     public function test_category_shows_correct_breadcrumbs()
     {
-        $root = Category::factory()->create([
-            'name' => 'Electronics',
-            'slug' => 'electronics',
-            'parent_id' => null,
-        ]);
+        $root  = Category::factory()->create(attributes: ['name' => 'Electronics', 'slug' => 'electronics', 'parent_id' => null]);
+        $child = Category::factory()->create(attributes: ['name' => 'TVs', 'slug' => 'tvs', 'parent_id' => $root->id]);
 
-        $child = Category::factory()->create([
-            'name' => 'TVs',
-            'slug' => 'tvs',
-            'parent_id' => $root->id,
-        ]);
+        $response = $this->getJson(uri: "/api/categories/{$child->slug}");
 
-        $response = $this->getJson("/api/categories/{$child->slug}");
+        $response->assertStatus(status: 200);
 
-        $response->assertStatus(200);
-
-        $breadcrumbs = $response->json('breadcrumbs');
-        $this->assertIsArray($breadcrumbs);
-        $this->assertGreaterThanOrEqual(1, count($breadcrumbs));
+        $breadcrumbs = $response->json(key: 'breadcrumbs');
+        $this->assertIsArray(actual: $breadcrumbs);
+        $this->assertGreaterThanOrEqual(minimum: 1, actual: count(value: $breadcrumbs));
     }
 
     /**
@@ -119,19 +102,19 @@ class ApiEndpointTest extends TestCase
      */
     public function test_products_pagination_works()
     {
-        Product::factory()->count(25)->create();
+        Product::factory()->count(count: 25)->create();
 
         // First page
-        $response1 = $this->getJson('/api/products?page=1');
-        $response1->assertStatus(200);
-        $this->assertEquals(20, count($response1->json('products.data')));
-        $this->assertEquals(1, $response1->json('products.meta.current_page'));
+        $response1 = $this->getJson(uri: '/api/products?page=1');
+        $response1->assertStatus(status: 200);
+        $this->assertEquals(expected: 20, actual: count(value: $response1->json(key: 'products.data')));
+        $this->assertEquals(expected: 1, actual: $response1->json(key: 'products.meta.current_page'));
 
         // Second page
-        $response2 = $this->getJson('/api/products?page=2');
-        $response2->assertStatus(200);
-        $this->assertEquals(5, count($response2->json('products.data')));
-        $this->assertEquals(2, $response2->json('products.meta.current_page'));
+        $response2 = $this->getJson(uri: '/api/products?page=2');
+        $response2->assertStatus(status: 200);
+        $this->assertEquals(expected: 5, actual: count(value: $response2->json(key: 'products.data')));
+        $this->assertEquals(expected: 2, actual: $response2->json(key: 'products.meta.current_page'));
     }
 
     /**
@@ -139,20 +122,20 @@ class ApiEndpointTest extends TestCase
      */
     public function test_available_brands_aggregation()
     {
-        Product::factory()->create(['brand' => 'Samsung']);
-        Product::factory()->create(['brand' => 'LG']);
-        Product::factory()->create(['brand' => 'Samsung']); // Duplicate
-        Product::factory()->create(['brand' => null]); // No brand
+        Product::factory()->create(attributes: ['brand' => 'Samsung']);
+        Product::factory()->create(attributes: ['brand' => 'LG']);
+        Product::factory()->create(attributes: ['brand' => 'Samsung']); // Duplicate
+        Product::factory()->create(attributes: ['brand' => null]); // No brand
 
-        $response = $this->getJson('/api/products');
+        $response = $this->getJson(uri: '/api/products');
 
-        $response->assertStatus(200);
-        $brands = $response->json('available_brands');
+        $response->assertStatus(status: 200);
+        $brands = $response->json(key: 'available_brands');
 
-        $this->assertIsArray($brands);
-        $this->assertContains('Samsung', $brands);
-        $this->assertContains('LG', $brands);
-        $this->assertCount(2, $brands); // Only unique brands
+        $this->assertIsArray(actual: $brands);
+        $this->assertContains(needle: 'Samsung', haystack: $brands);
+        $this->assertContains(needle: 'LG', haystack: $brands);
+        $this->assertCount(expectedCount: 2, haystack: $brands); // Only unique brands
     }
 
     /**
@@ -160,16 +143,16 @@ class ApiEndpointTest extends TestCase
      */
     public function test_category_filters_products_correctly()
     {
-        $category1 = Category::factory()->create(['slug' => 'category-1']);
-        $category2 = Category::factory()->create(['slug' => 'category-2']);
+        $category1 = Category::factory()->create(attributes: ['slug' => 'category-1']);
+        $category2 = Category::factory()->create(attributes: ['slug' => 'category-2']);
 
-        Product::factory()->count(5)->create(['category_id' => $category1->id]);
-        Product::factory()->count(3)->create(['category_id' => $category2->id]);
+        Product::factory()->count(count: 5)->create(attributes: ['category_id' => $category1->id]);
+        Product::factory()->count(count: 3)->create(attributes: ['category_id' => $category2->id]);
 
-        $response = $this->getJson("/api/categories/{$category1->slug}");
+        $response = $this->getJson(uri: "/api/categories/{$category1->slug}");
 
-        $response->assertStatus(200);
-        $this->assertEquals(5, $response->json('products.meta.total'));
+        $response->assertStatus(status: 200);
+        $this->assertEquals(expected: 5, actual: $response->json(key: 'products.meta.total'));
     }
 
     /**
@@ -177,16 +160,16 @@ class ApiEndpointTest extends TestCase
      */
     public function test_sidebar_tree_structure()
     {
-        $root = Category::factory()->create(['parent_id' => null]);
-        Category::factory()->count(2)->create(['parent_id' => $root->id]);
+        $root = Category::factory()->create(attributes: ['parent_id' => null]);
+        Category::factory()->count(count: 2)->create(attributes: ['parent_id' => $root->id]);
 
-        $response = $this->getJson('/api/products');
+        $response = $this->getJson(uri: '/api/products');
 
-        $response->assertStatus(200);
-        $sidebar = $response->json('sidebar_tree');
+        $response->assertStatus(status: 200);
+        $sidebar = $response->json(key: 'sidebar_tree');
 
-        $this->assertIsArray($sidebar);
-        $this->assertNotEmpty($sidebar);
+        $this->assertIsArray(actual: $sidebar);
+        $this->assertNotEmpty(actual: $sidebar);
     }
 
     /**
@@ -194,18 +177,18 @@ class ApiEndpointTest extends TestCase
      */
     public function test_price_sorting_ascending()
     {
-        Product::factory()->create(['name' => 'Expensive', 'price' => 1000]);
-        Product::factory()->create(['name' => 'Cheap', 'price' => 100]);
-        Product::factory()->create(['name' => 'Medium', 'price' => 500]);
+        Product::factory()->create(attributes: ['name' => 'Expensive', 'price' => 1000]);
+        Product::factory()->create(attributes: ['name' => 'Cheap', 'price' => 100]);
+        Product::factory()->create(attributes: ['name' => 'Medium', 'price' => 500]);
 
-        $response = $this->getJson('/api/products?sort=price_asc');
+        $response = $this->getJson(uri: '/api/products?sort=price_asc');
 
-        $response->assertStatus(200);
-        $data = $response->json('products.data');
+        $response->assertStatus(status: 200);
+        $data = $response->json(key: 'products.data');
 
-        $this->assertEquals('Cheap', $data[0]['name']);
-        $this->assertEquals('Medium', $data[1]['name']);
-        $this->assertEquals('Expensive', $data[2]['name']);
+        $this->assertEquals(expected: 'Cheap', actual: $data[0]['name']);
+        $this->assertEquals(expected: 'Medium', actual: $data[1]['name']);
+        $this->assertEquals(expected: 'Expensive', actual: $data[2]['name']);
     }
 
     /**
@@ -213,17 +196,17 @@ class ApiEndpointTest extends TestCase
      */
     public function test_price_sorting_descending()
     {
-        Product::factory()->create(['name' => 'Expensive', 'price' => 1000]);
-        Product::factory()->create(['name' => 'Cheap', 'price' => 100]);
-        Product::factory()->create(['name' => 'Medium', 'price' => 500]);
+        Product::factory()->create(attributes: ['name' => 'Expensive', 'price' => 1000]);
+        Product::factory()->create(attributes: ['name' => 'Cheap', 'price' => 100]);
+        Product::factory()->create(attributes: ['name' => 'Medium', 'price' => 500]);
 
-        $response = $this->getJson('/api/products?sort=price_desc');
+        $response = $this->getJson(uri: '/api/products?sort=price_desc');
 
-        $response->assertStatus(200);
-        $data = $response->json('products.data');
+        $response->assertStatus(status: 200);
+        $data = $response->json(key: 'products.data');
 
-        $this->assertEquals('Expensive', $data[0]['name']);
-        $this->assertEquals('Medium', $data[1]['name']);
-        $this->assertEquals('Cheap', $data[2]['name']);
+        $this->assertEquals(expected: 'Expensive', actual: $data[0]['name']);
+        $this->assertEquals(expected: 'Medium', actual: $data[1]['name']);
+        $this->assertEquals(expected: 'Cheap', actual: $data[2]['name']);
     }
 }

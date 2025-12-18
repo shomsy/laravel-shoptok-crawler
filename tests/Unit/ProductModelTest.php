@@ -5,11 +5,12 @@ namespace Tests\Unit;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 /**
  * Unit Tests for Product Model
- * 
+ *
  * Tests model relationships, scopes, and filtering logic.
  */
 class ProductModelTest extends TestCase
@@ -22,10 +23,10 @@ class ProductModelTest extends TestCase
     public function test_product_belongs_to_category()
     {
         $category = Category::factory()->create();
-        $product = Product::factory()->create(['category_id' => $category->id]);
+        $product  = Product::factory()->create(attributes: ['category_id' => $category->id]);
 
-        $this->assertInstanceOf(Category::class, $product->category);
-        $this->assertEquals($category->id, $product->category->id);
+        $this->assertInstanceOf(expected: Category::class, actual: $product->category);
+        $this->assertEquals(expected: $category->id, actual: $product->category->id);
     }
 
     /**
@@ -33,14 +34,14 @@ class ProductModelTest extends TestCase
      */
     public function test_filter_scope_searches_by_name()
     {
-        Product::factory()->create(['name' => 'Samsung TV 55']);
-        Product::factory()->create(['name' => 'LG Monitor']);
+        Product::factory()->create(attributes: ['name' => 'Samsung TV 55']);
+        Product::factory()->create(attributes: ['name' => 'LG Monitor']);
 
-        $request = new \Illuminate\Http\Request(['search' => 'Samsung']);
+        $request = new Request(query: ['search' => 'Samsung']);
         $results = Product::filter($request)->get();
 
-        $this->assertCount(1, $results);
-        $this->assertStringContainsString('Samsung', $results->first()->name);
+        $this->assertCount(expectedCount: 1, haystack: $results);
+        $this->assertStringContainsString(needle: 'Samsung', haystack: $results->first()->name);
     }
 
     /**
@@ -48,16 +49,16 @@ class ProductModelTest extends TestCase
      */
     public function test_filter_scope_filters_by_brand()
     {
-        Product::factory()->create(['brand' => 'Samsung']);
-        Product::factory()->create(['brand' => 'LG']);
-        Product::factory()->create(['brand' => 'Samsung']);
+        Product::factory()->create(attributes: ['brand' => 'Samsung']);
+        Product::factory()->create(attributes: ['brand' => 'LG']);
+        Product::factory()->create(attributes: ['brand' => 'Samsung']);
 
-        $request = new \Illuminate\Http\Request(['brand' => 'Samsung']);
+        $request = new Request(query: ['brand' => 'Samsung']);
         $results = Product::filter($request)->get();
 
-        $this->assertCount(2, $results);
+        $this->assertCount(expectedCount: 2, haystack: $results);
         foreach ($results as $product) {
-            $this->assertEquals('Samsung', $product->brand);
+            $this->assertEquals(expected: 'Samsung', actual: $product->brand);
         }
     }
 
@@ -66,14 +67,14 @@ class ProductModelTest extends TestCase
      */
     public function test_filter_scope_sorts_by_price_ascending()
     {
-        Product::factory()->create(['name' => 'Expensive', 'price' => 1000]);
-        Product::factory()->create(['name' => 'Cheap', 'price' => 100]);
+        Product::factory()->create(attributes: ['name' => 'Expensive', 'price' => 1000]);
+        Product::factory()->create(attributes: ['name' => 'Cheap', 'price' => 100]);
 
-        $request = new \Illuminate\Http\Request(['sort' => 'price_asc']);
+        $request = new Request(query: ['sort' => 'price_asc']);
         $results = Product::filter($request)->get();
 
-        $this->assertEquals('Cheap', $results->first()->name);
-        $this->assertEquals('Expensive', $results->last()->name);
+        $this->assertEquals(expected: 'Cheap', actual: $results->first()->name);
+        $this->assertEquals(expected: 'Expensive', actual: $results->last()->name);
     }
 
     /**
@@ -81,14 +82,14 @@ class ProductModelTest extends TestCase
      */
     public function test_filter_scope_sorts_by_price_descending()
     {
-        Product::factory()->create(['name' => 'Expensive', 'price' => 1000]);
-        Product::factory()->create(['name' => 'Cheap', 'price' => 100]);
+        Product::factory()->create(attributes: ['name' => 'Expensive', 'price' => 1000]);
+        Product::factory()->create(attributes: ['name' => 'Cheap', 'price' => 100]);
 
-        $request = new \Illuminate\Http\Request(['sort' => 'price_desc']);
+        $request = new Request(query: ['sort' => 'price_desc']);
         $results = Product::filter($request)->get();
 
-        $this->assertEquals('Expensive', $results->first()->name);
-        $this->assertEquals('Cheap', $results->last()->name);
+        $this->assertEquals(expected: 'Expensive', actual: $results->first()->name);
+        $this->assertEquals(expected: 'Cheap', actual: $results->last()->name);
     }
 
     /**
@@ -96,11 +97,11 @@ class ProductModelTest extends TestCase
      */
     public function test_price_is_cast_to_float()
     {
-        $product = Product::factory()->create(['price' => '99.99']);
+        $product = Product::factory()->create(attributes: ['price' => '99.99']);
 
         // Laravel's decimal:2 cast returns a string, not float
-        $this->assertIsString($product->price);
-        $this->assertEquals('99.99', $product->price);
+        $this->assertIsString(actual: $product->price);
+        $this->assertEquals(expected: '99.99', actual: $product->price);
     }
 
     /**
@@ -108,9 +109,9 @@ class ProductModelTest extends TestCase
      */
     public function test_external_id_is_fillable()
     {
-        $product = Product::factory()->create(['external_id' => 'unique-123']);
+        $product = Product::factory()->create(attributes: ['external_id' => 'unique-123']);
 
-        $this->assertEquals('unique-123', $product->external_id);
+        $this->assertEquals(expected: 'unique-123', actual: $product->external_id);
     }
 
     /**
@@ -118,9 +119,9 @@ class ProductModelTest extends TestCase
      */
     public function test_brand_can_be_null()
     {
-        $product = Product::factory()->create(['brand' => null]);
+        $product = Product::factory()->create(attributes: ['brand' => null]);
 
-        $this->assertNull($product->brand);
+        $this->assertNull(actual: $product->brand);
     }
 
     /**
@@ -128,17 +129,19 @@ class ProductModelTest extends TestCase
      */
     public function test_filter_combines_search_and_brand()
     {
-        Product::factory()->create(['name' => 'Samsung TV', 'brand' => 'Samsung']);
-        Product::factory()->create(['name' => 'Samsung Phone', 'brand' => 'Samsung']);
-        Product::factory()->create(['name' => 'LG TV', 'brand' => 'LG']);
+        Product::factory()->create(attributes: ['name' => 'Samsung TV', 'brand' => 'Samsung']);
+        Product::factory()->create(attributes: ['name' => 'Samsung Phone', 'brand' => 'Samsung']);
+        Product::factory()->create(attributes: ['name' => 'LG TV', 'brand' => 'LG']);
 
-        $request = new \Illuminate\Http\Request([
-            'search' => 'TV',
-            'brand' => 'Samsung',
-        ]);
+        $request = new Request(
+            query: ['search' => 'TV',
+                    'brand'  => 'Samsung',
+                   ]
+        );
+
         $results = Product::filter($request)->get();
 
-        $this->assertCount(1, $results);
-        $this->assertEquals('Samsung TV', $results->first()->name);
+        $this->assertCount(expectedCount: 1, haystack: $results);
+        $this->assertEquals(expected: 'Samsung TV', actual: $results->first()->name);
     }
 }

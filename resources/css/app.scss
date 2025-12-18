@@ -6,27 +6,27 @@ $shoptok-red: #d32f2f;
 $shoptok-black: #1a1a1a;
 
 body {
-    background-color: #f8f9fa; /* Light grey background for better contrast */
-    color: $shoptok-black;
-    font-family: 'Inter', sans-serif;
+  background-color: #f8f9fa; /* Light grey background for better contrast */
+  color: $shoptok-black;
+  font-family: 'Inter', sans-serif;
 }
 
 .btn-danger {
-    background-color: $shoptok-red;
-    border-color: $shoptok-red;
+  background-color: $shoptok-red;
+  border-color: $shoptok-red;
 
-    &:hover {
-        background-color: darken($shoptok-red, 10%);
-        border-color: darken($shoptok-red, 10%);
-    }
+  &:hover {
+    background-color: darken($shoptok-red, 10%);
+    border-color: darken($shoptok-red, 10%);
+  }
 }
 
 .text-danger {
-    color: $shoptok-red !important;
+  color: $shoptok-red !important;
 }
 
 // Optimization: Ensure images are efficient
 img {
-    max-width: 100%;
-    height: auto;
+  max-width: 100%;
+  height: auto;
 }

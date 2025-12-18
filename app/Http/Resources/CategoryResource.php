@@ -13,18 +13,19 @@ class CategoryResource extends JsonResource
      * Uses "whenLoaded" for children to prevent N+1 queries.
      *
      * @param Request $request
+     *
      * @return array
      */
-    public function toArray(Request $request): array
+    public function toArray(Request $request) : array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'slug' => $this->slug,
+            'id'        => $this->id,
+            'name'      => $this->name,
+            'slug'      => $this->slug,
             'parent_id' => $this->parent_id,
             // Only include children if they were eager-loaded
-            'children' => $this->whenLoaded('children', function () {
-                return CategoryResource::collection($this->children);
+            'children'  => $this->whenLoaded(relationship: 'children', value: function () {
+                return self::collection(resource: $this->children);
             }),
         ];
     }

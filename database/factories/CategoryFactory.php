@@ -2,10 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Category;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Category>
+ * @extends Factory<Category>
  */
 class CategoryFactory extends Factory
 {
@@ -14,12 +16,13 @@ class CategoryFactory extends Factory
      *
      * @return array<string, mixed>
      */
-    public function definition(): array
+    public function definition() : array
     {
         $name = $this->faker->unique()->word() . ' ' . $this->faker->word();
+
         return [
-            'name' => ucfirst($name),
-            'slug' => \Illuminate\Support\Str::slug($name),
+            'name'      => ucfirst(string: $name),
+            'slug'      => Str::slug(title: $name),
             'parent_id' => null,
         ];
     }

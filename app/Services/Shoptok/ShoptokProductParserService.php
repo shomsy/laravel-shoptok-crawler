@@ -48,30 +48,31 @@ final class ShoptokProductParserService
      * and tries to extract all key information.
      *
      * @param Crawler $item A DomCrawler node representing one product.
+     *
      * @return array|null      Clean product data, or NULL if it's not a valid item.
      */
-    public function parseItem(Crawler $item): ?array
+    public function parseItem(Crawler $item) : array|null
     {
         $name = $this->firstLinkText(item: $item);
-        $url = $this->firstLinkHref(item: $item);
+        $url  = $this->firstLinkHref(item: $item);
 
         if ($name === null || $url === null) {
             return null; // Not a valid product card (probably an ad or empty box)
         }
 
-        $price = $this->extractPriceFromText(text: $item->text(default: ''));
-        $brand = $this->extractBrandFromText(text: $name, item: $item);
+        $price    = $this->extractPriceFromText(text: $item->text(default: ''));
+        $brand    = $this->extractBrandFromText(text: $name, item: $item);
         $imageUrl = $this->firstImageSrc(item: $item);
 
         Log::info(message: "Parsed Item: Name='{$name}', Brand='{$brand}', Image='{$imageUrl}'");
 
         return [
             'external_id' => $this->makeExternalId(url: $url),
-            'name' => $name,
-            'brand' => $brand,
-            'price' => $price,
-            'currency' => 'EUR',
-            'image_url' => $imageUrl,
+            'name'        => $name,
+            'brand'       => $brand,
+            'price'       => $price,
+            'currency'    => 'EUR',
+            'image_url'   => $imageUrl,
             'product_url' => $this->normalizeUrl(url: $url),
         ];
     }
@@ -80,7 +81,7 @@ final class ShoptokProductParserService
      * 📄 Finds the first “real” product name link inside the item block.
      * Skips CTA links like “Compare prices” or “More offers”.
      */
-    private function firstLinkText(Crawler $item): ?string
+    private function firstLinkText(Crawler $item) : string|null
     {
         $links = $item->filter(selector: 'a');
         if ($links->count() === 0) {
@@ -100,7 +101,7 @@ final class ShoptokProductParserService
     }
 
     /** Checks if a link text is a “call-to-action” (like “Compare prices”) */
-    private function isCtaText(string $text): bool
+    private function isCtaText(string $text) : bool
     {
         $t = mb_strtolower(string: $text);
 
@@ -110,7 +111,7 @@ final class ShoptokProductParserService
     }
 
     /** Finds the href (URL) of the first “real” product link */
-    private function firstLinkHref(Crawler $item): ?string
+    private function firstLinkHref(Crawler $item) : string|null
     {
         $links = $item->filter(selector: 'a');
         if ($links->count() === 0) {
@@ -135,28 +136,29 @@ final class ShoptokProductParserService
      * Handles various formats like “od 1.799,99 €” or “412,90 €”.
      * Converts it into a clean float: 1799.99
      */
-    private function extractPriceFromText(string $text): float
+    private function extractPriceFromText(string $text) : float
     {
         // Pattern 1: Standard Euro format with thousands dot and decimal comma "1.799,99 €"
         // Regex Explanation:
         // (\d{1,3}(\.\d{3})*)   -> Matches 1.799 or 179 (Integer part with dots)
         // (,\d{2})?             -> Matches ,99 (Decimal part, optional)
-        if (preg_match('/(\d{1,3}(\.\d{3})*)(,\d{2})?\s*€/u', $text, $matches)) {
+        if (preg_match(pattern: '/(\d{1,3}(\.\d{3})*)(,\d{2})?\s*€/u', subject: $text, matches: $matches)) {
             // We want the full number string "1.799,99"
             // $matches[0] contains the full match including €, so we reconstruct it from parts
             // $matches[1] is integer part "1.799"
             // $matches[3] is decimal part ",99"
 
-            $intPart = str_replace('.', '', $matches[1]);
-            $decPart = isset($matches[3]) ? str_replace(',', '.', $matches[3]) : '';
+            $intPart = str_replace(search: '.', replace: '', subject: $matches[1]);
+            $decPart = isset($matches[3]) ? str_replace(search: ',', replace: '.', subject: $matches[3]) : '';
 
             return (float) ($intPart . $decPart);
         }
 
         // Pattern 2: Fallback for spaces or other formats "1 799 €"
-        if (preg_match('/(\d[\d\s\.]*),(\d{2})\s*€/u', $text, $matches)) {
-            $intPart = preg_replace('/[^\d]/', '', $matches[1]);
+        if (preg_match(pattern: '/(\d[\d\s\.]*),(\d{2})\s*€/u', subject: $text, matches: $matches)) {
+            $intPart = preg_replace(pattern: '/[^\d]/', replacement: '', subject: $matches[1]);
             $decPart = '.' . $matches[2];
+
             return (float) ($intPart . $decPart);
         }
 
@@ -170,12 +172,12 @@ final class ShoptokProductParserService
      * 1️⃣ Try to get it from the “event-viewitem-brand” attribute inside <h3>.
      * 2️⃣ If missing, fall back to detecting brand keywords in the name (Samsung, LG, etc.)
      */
-    private function extractBrandFromText(string $text, Crawler $item): ?string
+    private function extractBrandFromText(string $text, Crawler $item) : string|null
     {
         $h3 = $item->filter(selector: 'h3[event-viewitem-brand]');
         if ($h3->count() > 0) {
             $attrBrand = $h3->attr(attribute: 'event-viewitem-brand');
-            if (!empty($attrBrand)) {
+            if (! empty($attrBrand)) {
                 return trim(string: $attrBrand);
             }
         }
@@ -196,15 +198,16 @@ final class ShoptokProductParserService
      * 2️⃣ <img src="...">
      * 3️⃣ <div style="background-image:url(...)">
      */
-    private function firstImageSrc(Crawler $item): ?string
+    private function firstImageSrc(Crawler $item) : string|null
     {
         try {
             // Try <picture><source srcset="...">
             $source = $item->filter(selector: 'picture source')->first();
             if ($source->count() > 0) {
                 $srcset = $source->attr(attribute: 'srcset');
-                if (!empty($srcset)) {
+                if (! empty($srcset)) {
                     $url = explode(separator: ' ', string: trim(string: $srcset))[0];
+
                     return str_starts_with(haystack: $url, needle: 'http') ? $url : 'https://www.shoptok.si' . $url;
                 }
             }
@@ -216,11 +219,12 @@ final class ShoptokProductParserService
                     ?? $img->attr(attribute: 'data-original')
                     ?? $img->attr(attribute: 'srcset')
                     ?? $img->attr(attribute: 'src');
-                if (!empty($src)) {
+                if (! empty($src)) {
                     $src = explode(separator: ' ', string: trim(string: $src))[0];
                     if (str_starts_with(haystack: $src, needle: 'http')) {
                         return $src;
                     }
+
                     return 'https://www.shoptok.si' . $src;
                 }
             }
@@ -231,6 +235,7 @@ final class ShoptokProductParserService
                 $style = $div->attr(attribute: 'style');
                 if (preg_match(pattern: '/url\((.*?)\)/', subject: $style, matches: $matches)) {
                     $url = trim(string: $matches[1], characters: '\'" ');
+
                     return str_starts_with(haystack: $url, needle: 'http') ? $url : 'https://www.shoptok.si' . $url;
                 }
             }
@@ -238,6 +243,7 @@ final class ShoptokProductParserService
             return null;
         } catch (Exception $e) {
             Log::warning(message: 'Image parse failed', context: ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -246,7 +252,7 @@ final class ShoptokProductParserService
      * 🧩 Generates a unique, stable external ID for each product.
      * Uses a SHA256 hash of its normalized URL.
      */
-    private function makeExternalId(string $url): string
+    private function makeExternalId(string $url) : string
     {
         return hash(algo: 'sha256', data: $this->normalizeUrl(url: $url));
     }
@@ -254,7 +260,7 @@ final class ShoptokProductParserService
     /**
      * 🌐 Normalizes URLs (adds domain if missing)
      */
-    private function normalizeUrl(string $url): string
+    private function normalizeUrl(string $url) : string
     {
         if (str_starts_with(haystack: $url, needle: 'http://') || str_starts_with(haystack: $url, needle: 'https://')) {
             return $url;
@@ -273,7 +279,7 @@ final class ShoptokProductParserService
      * <div class="product">...</div>
      * <div class="b-paging-product">...</div>
      */
-    public function findProductNodes(Crawler $dom): Crawler
+    public function findProductNodes(Crawler $dom) : Crawler
     {
         return $dom->filterXPath(
             xpath: "//div[contains(concat(' ', normalize-space(@class), ' '), ' product ')]

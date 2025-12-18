@@ -17,15 +17,14 @@ class CategoryCollection extends ResourceCollection
      *
      * Each category is transformed using CategoryResource.
      */
-    public function toArray(Request $request): array
+    public function toArray(Request $request) : array
     {
         return [
-            'data' => CategoryResource::collection($this->collection),
+            'data' => CategoryResource::collection(resource: $this->collection),
             'meta' => [
-                'total' => $this->collection->count(),
-                'has_children' => $this->
-                                    collection->
-                                    contains(static fn ($c) => $c->relationLoaded('children') && $c->children->isNotEmpty()),
+                'total'        => $this->collection->count(),
+                'has_children' => $this->collection
+                    ->contains(key: static fn ($c) => $c->relationLoaded('children') && $c->children->isNotEmpty()),
             ],
         ];
     }

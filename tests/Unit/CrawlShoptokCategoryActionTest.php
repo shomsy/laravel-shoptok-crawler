@@ -4,17 +4,12 @@ namespace Tests\Unit;
 
 use App\Actions\Shoptok\CrawlShoptokCategoryAction;
 use App\Models\Category;
-use App\Services\ProductUpsertService;
-use App\Services\Shoptok\ShoptokCategoryParserService;
-use App\Services\Shoptok\ShoptokProductParserService;
-use App\Services\Shoptok\ShoptokSeleniumService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
 use Tests\TestCase;
 
 /**
  * Unit Tests for CrawlShoptokCategoryAction
- * 
+ *
  * Tests the crawl action with mocked services to avoid external dependencies.
  */
 class CrawlShoptokCategoryActionTest extends TestCase
@@ -23,30 +18,12 @@ class CrawlShoptokCategoryActionTest extends TestCase
 
     private Category $category;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->category = Category::factory()->create(['slug' => 'test-category']);
-    }
-
     /**
      * Test: Action class exists and is instantiable
      */
     public function test_action_class_exists()
     {
-        $this->assertTrue(class_exists(CrawlShoptokCategoryAction::class));
-    }
-
-    /**
-     * Test: Action requires all dependencies
-     */
-    public function test_action_requires_dependencies()
-    {
-        // Note: Since all services are final, we can't mock them
-        // In a real scenario, you'd use dependency injection containers
-        // or create test doubles for integration testing
-
-        $this->assertTrue(true);
+        $this->assertTrue(condition: class_exists(class: CrawlShoptokCategoryAction::class));
     }
 
     /**
@@ -66,6 +43,12 @@ class CrawlShoptokCategoryActionTest extends TestCase
         $expectedPage2 = $baseUrl . '?page=2';
 
         // This is a conceptual test - actual implementation would call the method
-        $this->assertStringContainsString('cene', $baseUrl);
+        $this->assertStringContainsString(needle: 'cene', haystack: $baseUrl);
+    }
+
+    protected function setUp() : void
+    {
+        parent::setUp();
+        $this->category = Category::factory()->create(attributes: ['slug' => 'test-category']);
     }
 }

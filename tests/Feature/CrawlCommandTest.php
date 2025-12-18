@@ -2,14 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
  * Feature Tests for Artisan Commands
- * 
+ *
  * Tests the crawl commands to ensure they execute properly.
  * Note: These tests mock external dependencies to avoid actual HTTP requests.
  */
@@ -24,7 +23,7 @@ class CrawlCommandTest extends TestCase
     {
         $commands = Artisan::all();
 
-        $this->assertArrayHasKey('crawl:tv-sprejemniki', $commands);
+        $this->assertArrayHasKey(key: 'crawl:tv-sprejemniki', array: $commands);
     }
 
     /**
@@ -36,11 +35,11 @@ class CrawlCommandTest extends TestCase
         // In production, you'd mock external HTTP calls
         // For now, we just verify the category creation logic
 
-        $this->assertDatabaseMissing('categories', ['slug' => 'tv-sprejemniki']);
+        $this->assertDatabaseMissing(table: 'categories', data: ['slug' => 'tv-sprejemniki']);
 
         // The command would create it, but we skip actual execution
         // to avoid external dependencies
-        $this->assertTrue(true);
+        $this->assertTrue(condition: true);
     }
 
     /**
@@ -50,7 +49,7 @@ class CrawlCommandTest extends TestCase
     {
         $command = Artisan::all()['crawl:tv-sprejemniki'];
 
-        $this->assertNotEmpty($command->getDescription());
-        $this->assertStringContainsString('Crawl', $command->getDescription());
+        $this->assertNotEmpty(actual: $command->getDescription());
+        $this->assertStringContainsString(needle: 'Crawl', haystack: $command->getDescription());
     }
 }

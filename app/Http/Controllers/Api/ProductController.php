@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -11,59 +13,77 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * 🛒 ProductController
+ *
+ * Provides the main API endpoint for listing products.
+ *
+ * Features:
+ * - Full-text search and brand filtering
+ * - Sorting (price ascending/descending, latest)
+ * - Dynamic brand aggregation
+ * - Sidebar and breadcrumb generation
+ * - Aggressive caching for fast response times
+ */
 final class ProductController extends Controller
 {
     /**
-     * 🎯 Returns a paginated list of products with optional filters.
+     * Get a paginated list of products with optional filters.
      *
      * Handles:
-     * - Search, sorting, and brand filtering
-     * - Dynamic brand aggregation
-     * - Cached responses for faster load
-     * - Sidebar category tree (manual fallback for root)
+     * - `?search=` → search by product name
+     * - `?brand=` → filter by brand
+     * - `?sort=price_asc|price_desc` → sorting
+     * - Cached sidebar tree and available brands
+     *
+     * Example:
+     * ```
+     * GET /api/products?search=lg&brand=Samsung&sort=price_asc
+     * ```
      */
     public function index(Request $request)
     {
-        // 🧠 Include model timestamps in cache key to auto-refresh when data changes
+        // Include model timestamps in cache key to auto-refresh when data changes
         $lastUpdate = Product::max('updated_at') ?? now();
-        $cacheKey = $this->makeCacheKey(request: $request, lastUpdate: $lastUpdate);
+        $cacheKey   = $this->makeCacheKey(request: $request, lastUpdate: $lastUpdate);
 
         return Cache::remember(key: $cacheKey, ttl: now()->addMinutes(30), callback: function () use ($request) {
-            // 1️⃣ Build base query
+            // Build product query
             $query = Product::with('category')->filter($request);
 
-            // 2️⃣ Aggregate available brands (with short cache)
+            // Aggregate available brands (short cache)
             $availableBrands = Cache::remember(
-                key: 'brands:cache:' . md5(string: $request->fullUrl()),
-                ttl: now()->addSeconds(30),
-                callback: fn() => $this->getAvailableBrandsOptimized(query: $query)
+                key     : 'brands:' . md5(string: $request->fullUrl()),
+                ttl     : now()->addSeconds(30),
+                callback: fn () => $this->getAvailableBrandsOptimized(query: $query)
             );
 
-            // 3️⃣ Paginate results
+            // Paginate results
             $products = $query->paginate(20)->withQueryString();
 
-            // 4️⃣ Sidebar (cached structure)
+            // Sidebar tree (cached structure)
             $sidebarTree = $this->buildSidebarTree();
 
-            // 5️⃣ Breadcrumbs
+            // Breadcrumbs
             $breadcrumbs = $this->buildBreadcrumbs(request: $request);
 
-            // ✅ Final structured response
+            // ✅ Response payload
             return response()->json(data: [
-                'category' => null,
-                'breadcrumbs' => $breadcrumbs,
-                'sidebar_tree' => CategoryResource::collection(resource: $sidebarTree),
-                'available_brands' => $availableBrands,
-                'products' => new ProductCollection(resource: $products),
-            ]);
+                                              'category'         => null,
+                                              'breadcrumbs'      => $breadcrumbs,
+                                              'sidebar_tree'     => CategoryResource::collection(resource: $sidebarTree),
+                                              'available_brands' => $availableBrands,
+                                              'products'         => new ProductCollection(resource: $products),
+                                          ]);
         });
     }
 
     /**
-     * 🔑 Builds a unique cache key per query (pagination, filters, etc.)
-     * Includes model update timestamp to ensure freshness after data changes.
+     * Build a unique cache key per query.
+     *
+     * Ensures freshness when product data changes.
      */
-    private function makeCacheKey(Request $request, $lastUpdate): string
+    private function makeCacheKey(Request $request, $lastUpdate) : string
     {
         return sprintf(
             'products:v2:%s:%s',
@@ -73,15 +93,15 @@ final class ProductController extends Controller
     }
 
     /**
-     * ⚡ Optimized brand aggregation (Query Builder for speed)
+     * Optimized brand aggregation using Query Builder.
      *
-     * Skips Eloquent overhead, performs DISTINCT scan on indexed columns.
-     * Up to 2× faster on 100k+ rows.
+     * Avoids Eloquent overhead — performs a DISTINCT scan
+     * on indexed columns for faster performance.
      */
     private function getAvailableBrandsOptimized($query)
     {
         $baseSql = $query->toBase();
-        $table = (new Product)->getTable();
+        $table   = (new Product)->getTable();
 
         return DB::table(table: $table)
             ->select(columns: 'brand')
@@ -99,26 +119,27 @@ final class ProductController extends Controller
     }
 
     /**
-     * 🌳 Sidebar tree builder (root → children, with fallback)
+     * Build sidebar category tree (root + children).
+     *
+     * Always prioritizes “TV sprejemniki” as the top-level node.
+     * Falls back to the first available root category if missing.
      */
     private function buildSidebarTree()
     {
         return Cache::remember(key: 'sidebar_tree:v2', ttl: now()->addMinutes(30), callback: function () {
-            // Prefer canonical “TV sprejemniki”
             $root = Category::where(column: 'slug', operator: 'tv-sprejemniki')->first()
                 ?? Category::whereNull('parent_id')->first()
                 ?? Category::orderBy('id')->first();
 
-            if (!$root) {
+            if (! $root) {
                 return collect();
             }
 
-            // Fetch children (true hierarchy)
+            // Load children or fallback to all remaining categories
             $children = Category::where(column: 'parent_id', operator: $root->id)
                 ->orderBy('name')
                 ->get();
 
-            // Fallback → attach all others if no children
             if ($children->isEmpty()) {
                 $children = Category::where(column: 'id', operator: '!=', value: $root->id)
                     ->orderBy('name')
@@ -132,9 +153,12 @@ final class ProductController extends Controller
     }
 
     /**
-     * 🧭 Breadcrumbs builder
+     * Build breadcrumb navigation.
+     *
+     * Always starts with a “Search Results” item,
+     * followed by the active search query (if any).
      */
-    private function buildBreadcrumbs(Request $request): array
+    private function buildBreadcrumbs(Request $request) : array
     {
         $crumbs = [
             ['name' => 'Search Results', 'slug' => 'search', 'url' => '/products'],
@@ -144,7 +168,7 @@ final class ProductController extends Controller
             $crumbs[] = [
                 'name' => '"' . e(value: $request->search) . '"',
                 'slug' => 'query',
-                'url' => '#',
+                'url'  => '#',
             ];
         }
 
