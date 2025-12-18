@@ -18,15 +18,15 @@
                     TV sprejemniki categories
                 </div>
                 <div class="list-group list-group-flush">
-                    <a class="list-group-item list-group-item-action {{ $activeCategory === '' ? 'active' : '' }}"
-                       href="{{ route('products.index') }}">
+                    <a class="list-group-item list-group-item-action {{value: $activeCategory === '' ? 'active' : '' }}"
+                       href="{{value: route(name: 'products.index') }}">
                         All products
                     </a>
 
                     @foreach($sidebarCategories as $cat)
-                        <a class="list-group-item list-group-item-action {{ $activeCategory === $cat->slug ? 'active' : '' }}"
-                           href="{{ route('products.index', ['category' => $cat->slug]) }}">
-                            {{ $cat->name }}
+                        <a class="list-group-item list-group-item-action {{value: $activeCategory === $cat->slug ? 'active' : '' }}"
+                           href="{{value: route(name: 'products.index', parameters: ['category' => $cat->slug]) }}">
+                            {{value: $cat->name }}
                         </a>
                     @endforeach
                 </div>
@@ -37,8 +37,8 @@
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h1 class="h4 m-0">Products</h1>
                 <div class="text-muted small">
-                    Showing {{ $products->firstItem() ?? 0 }}–{{ $products->lastItem() ?? 0 }}
-                    of {{ $products->total() }}
+                    Showing {{value: $products->firstItem() ?? 0 }}–{{value: $products->lastItem() ?? 0 }}
+                    of {{value: $products->total() }}
                 </div>
             </div>
 
@@ -47,16 +47,18 @@
                     <div class="col">
                         <div class="card h-100">
                             @if($p->image_url)
-                                <img src="{{ $p->image_url }}" class="card-img-top"
+                                <img src="{{value: $p->image_url }}" class="card-img-top"
                                      style="object-fit:cover; height: 180px;" alt="">
                             @endif
                             <div class="card-body">
-                                <div class="small text-muted mb-1">{{ $p->category?->name }}</div>
-                                <div class="fw-semibold">{{ $p->name }}</div>
+                                <div class="small text-muted mb-1">{{value: $p->category?->name }}</div>
+                                <div class="fw-semibold">{{value: $p->name }}</div>
                             </div>
                             <div class="card-footer d-flex justify-content-between align-items-center">
-                                <div class="fw-bold">{{ number_format((float)$p->price, 2, ',', '.') }} €</div>
-                                <a class="btn btn-sm btn-primary" href="{{ $p->product_url }}" target="_blank"
+                                <div class="fw-bold">{{value: number_format(num: (float)$p->price, decimals: 2, decimal_separator: ',', thousands_separator: '.') }}
+                                    €
+                                </div>
+                                <a class="btn btn-sm btn-primary" href="{{value: $p->product_url }}" target="_blank"
                                    rel="noreferrer">
                                     Open
                                 </a>
@@ -67,7 +69,7 @@
             </div>
 
             <div class="mt-4">
-                {{ $products->links('pagination::bootstrap-5') }}
+                {{value: $products->links('pagination::bootstrap-5') }}
             </div>
         </main>
 

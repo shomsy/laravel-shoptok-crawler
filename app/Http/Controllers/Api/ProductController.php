@@ -88,7 +88,7 @@ final class ProductController extends Controller
         return sprintf(
             'products:v2:%s:%s',
             md5(string: $request->fullUrl()),
-            md5(string: $lastUpdate)
+            md5(string: (string) $lastUpdate)
         );
     }
 

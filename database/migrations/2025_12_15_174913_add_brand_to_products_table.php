@@ -8,20 +8,20 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->string('brand')->nullable()->after('name');
+        Schema::table(table: 'products', callback: function (Blueprint $table) {
+            $table->string(column: 'brand')->nullable()->after('name');
         });
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('brand');
+        Schema::table(table: 'products', callback: function (Blueprint $table) {
+            $table->dropColumn(columns: 'brand');
         });
     }
 };

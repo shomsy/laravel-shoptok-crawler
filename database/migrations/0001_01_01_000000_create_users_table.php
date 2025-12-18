@@ -8,7 +8,7 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
         Schema::create(table: 'users', callback: function (Blueprint $table) {
             $table->id();
@@ -39,7 +39,7 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
         Schema::dropIfExists(table: 'users');
         Schema::dropIfExists(table: 'password_reset_tokens');

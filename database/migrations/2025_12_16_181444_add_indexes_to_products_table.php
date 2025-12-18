@@ -8,7 +8,7 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
         Schema::table(table: 'products', callback: function (Blueprint $table) {
             // Covering Index for filtering + sorting by price
@@ -29,7 +29,7 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
         Schema::table(table: 'products', callback: function (Blueprint $table) {
             $table->dropIndex(index: 'idx_category_brand_price');

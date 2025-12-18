@@ -164,8 +164,9 @@ final class CategoryController extends Controller
      */
     private function buildSidebarTree()
     {
-        // 🌳 Prefer root-level category, fallback to first available
-        $root = Category::whereNull('parent_id')->first()
+        // 🌳 Always prefer the known root “TV sprejemniki”
+        $root = Category::where('slug', 'tv-sprejemniki')->first()
+            ?? Category::whereNull('parent_id')->first()
             ?? Category::orderBy('id')->first();
 
         // If there are no categories at all, return an empty collection

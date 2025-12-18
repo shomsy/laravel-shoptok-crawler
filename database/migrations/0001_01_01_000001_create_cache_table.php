@@ -8,7 +8,7 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
         Schema::create(table: 'cache', callback: function (Blueprint $table) {
             $table->string(column: 'key')->primary();
@@ -26,7 +26,7 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
         Schema::dropIfExists(table: 'cache');
         Schema::dropIfExists(table: 'cache_locks');

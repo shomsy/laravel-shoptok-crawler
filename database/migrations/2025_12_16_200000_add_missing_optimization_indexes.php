@@ -8,7 +8,7 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up() : void
     {
         Schema::table(table: 'categories', callback: function (Blueprint $table) {
             // Index for parent_id to speed up children queries (Smart Sidebar)
@@ -32,16 +32,16 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down() : void
     {
         Schema::table(table: 'categories', callback: function (Blueprint $table) {
-            $table->dropIndex('idx_parent_category');
+            $table->dropIndex(index: 'idx_parent_category');
         });
 
         Schema::table(table: 'products', callback: function (Blueprint $table) {
-            $table->dropIndex('idx_brand');
-            $table->dropIndex('idx_brand_price');
-            $table->dropIndex('idx_category_id');
+            $table->dropIndex(index: 'idx_brand');
+            $table->dropIndex(index: 'idx_brand_price');
+            $table->dropIndex(index: 'idx_category_id');
         });
     }
 };
