@@ -91,11 +91,29 @@ final readonly class CrawlShoptokCategoryAction
                         Log::info(message: "Found subcategory: {$sub['name']} → crawling...");
 
                         // 🛡️ Safeguard: Prevent circular parent relationship
-                        if ($sub['slug'] === $category->slug) {
-                            Log::warning("⚠️ Detected circular dependency for slug {$sub['slug']} — skipping parent assignment.");
-                            $parentId = null;
-                        } else {
-                            $parentId = $category->id;
+                        $childCategory = Category::where('slug', $sub['slug'])->first();
+                        $parentId = $category->id;
+
+                        if ($childCategory) {
+                            // 1. ROOT CLAIM: If current category is a root (no parent),
+                            // it "claims" this child even if it's currently linked elsewhere.
+                            // This auto-fixes corrupted hierarchies during a root crawl.
+                            if ($category->parent_id === null) {
+                                $parentId = $category->id;
+                            }
+                            // 2. Lock parent: If it already has a parent, don't overwrite it
+                            // (prevents deeper recursion links from hijacking the hierarchy)
+                            elseif ($childCategory->parent_id !== null) {
+                                $parentId = $childCategory->parent_id;
+                            }
+                            // 3. Prevent cycles: If current category is already a descendant of the found subcategory
+                            else {
+                                $descendantsOfChild = Category::getDescendantIds($childCategory->id);
+                                if (in_array($category->id, $descendantsOfChild)) {
+                                    Log::warning("⚠️ Prevented circular dependency: {$category->slug} is already a descendant of {$childCategory->slug}.");
+                                    $parentId = $childCategory->parent_id;
+                                }
+                            }
                         }
 
                         $childCategory = Category::updateOrCreate(
