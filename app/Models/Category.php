@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use RuntimeException;
 
 /**
  * 🧩 **Category Model**
@@ -50,6 +51,54 @@ final class Category extends Model
         'slug',
         'parent_id',
     ];
+
+    /**
+     * 🌳 Recursively finds all descendant IDs for a given category ID.
+     *
+     * This method walks the category tree using Eloquent relationships.
+     * It performs breadth-first traversal (BFS) to avoid recursion limits.
+     *
+     * @return int[]
+     */
+    public static function getDescendantIds(int $categoryId) : array
+    {
+        $ids     = [$categoryId];
+        $queue   = [$categoryId];
+        $visited = [$categoryId => true];
+
+        while ( ! empty($queue) ) {
+            $parentId = array_shift($queue);
+
+            // Use the Eloquent model instead of raw DB query
+            $childrenIds = self::query()
+                ->where(column: 'parent_id', operator: $parentId)
+                ->pluck('id')
+                ->all();
+
+            foreach ($childrenIds as $childId) {
+                if (! isset($visited[$childId])) {
+                    $visited[$childId] = true;
+                    $ids[]             = $childId;
+                    $queue[]           = $childId;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * 🛡️ Bootstrap the model and its traits.
+     */
+    protected static function booted()
+    {
+        static::saving(static function (self $category) {
+            // Prevent self-parenting
+            if ($category->id && $category->parent_id === $category->id) {
+                throw new RuntimeException("Circular parent_id detected for category: {$category->slug}");
+            }
+        });
+    }
 
     /**
      * 🔗 Relationship: One category can contain multiple products.

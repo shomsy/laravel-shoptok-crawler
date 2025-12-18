@@ -88,29 +88,36 @@ final class Product extends Model
      *
      * @return Builder  Modified query builder.
      */
-    public function scopeFilter(Builder $query, Request $filters) : Builder
+    public function scopeFilter(Builder $query, Request $filters): Builder
     {
         return $query
-            // 🔎 Filter by category slug (joins Category relation only when provided)
+            // 🔎 Filter by category slug (Recursive)
             ->when(
-                value   : $filters->filled(key: 'category'),
+                value: $filters->filled(key: 'category'),
                 callback: function (Builder $q) use ($filters) {
-                    $q->whereHas(
-                        relation: 'category',
-                        callback: fn (Builder $c) => $c->where(column: 'slug', operator: $filters->input(key: 'category'))
-                    );
-                })
+                    $slug = $filters->input(key: 'category');
+                    $category = Category::where('slug', $slug)->first();
 
-            // 🏷️ Filter by brand name
+                    if ($category) {
+                        $categoryIds = Category::getDescendantIds($category->id);
+                        $q->whereIn('category_id', $categoryIds);
+                    }
+                }
+            )
+
+            // 🏷️ Filter by multiple brands (comma-separated)
             ->when(
-                value   : $filters->filled(key: 'brand'),
-                callback: fn (Builder $q) => $q->where(column: 'brand', operator: $filters->input(key: 'brand'))
+                value: $filters->filled(key: 'brand'),
+                callback: function (Builder $q) use ($filters) {
+                    $brands = explode(',', $filters->input(key: 'brand'));
+                    $q->whereIn('brand', $brands);
+                }
             )
 
             // 🔍 Keyword search in product name
             ->when(
-                value   : $filters->filled(key: 'search'),
-                callback: fn (Builder $q) => $q->where(column: 'name', operator: 'LIKE', value: '%' . $filters->input(key: 'search') . '%')
+                value: $filters->filled(key: 'search'),
+                callback: fn(Builder $q) => $q->where(column: 'name', operator: 'LIKE', value: '%' . $filters->input(key: 'search') . '%')
             )
 
             // ⚙️ Sorting logic
@@ -137,7 +144,7 @@ final class Product extends Model
      *
      * @return BelongsTo<Category, self>
      */
-    public function category() : BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(related: Category::class);
     }

@@ -94,7 +94,7 @@ final class CategoryController extends Controller
      */
     public function show(Request $request, string $slug)
     {
-        $cacheKey = "category_view:v6:{$slug}:" . md5(string: $request->fullUrl());
+        $cacheKey = "category_view:v8:{$slug}:" . md5(string: $request->fullUrl());
 
         return Cache::remember(key: $cacheKey, ttl: now()->addMinutes(30), callback: function () use ($slug, $request) {
             /** @var Category $category */
@@ -105,26 +105,14 @@ final class CategoryController extends Controller
             // 🌳 Sidebar structure (virtual hierarchy)
             $sidebarTree = $this->buildSidebarTree();
 
-            // 🔍 Determine which category IDs to include (recursively)
-            $categoryIds = $this->resolveCategoryScope(category: $category);
+            // 🔍 Determine which products belong to this category scope (Recursive)
+            $categoryIds = Category::getDescendantIds(categoryId: $category->id);
 
-            // 🏗️ Base query for products within this category scope
+            // 🏗️ Build optimized product query using shared filter scope
             $productsQuery = Product::query()
                 ->whereIn('category_id', $categoryIds)
-                ->with(relations: 'category');
-
-            // 🏷️ Filter by one or more brands
-            if ($request->filled(key: 'brand')) {
-                $brands = explode(separator: ',', string: $request->input(key: 'brand'));
-                $productsQuery->whereIn('brand', $brands);
-            }
-
-            // ⚙️ Sorting options
-            match ($request->input(key: 'sort')) {
-                'price_asc'  => $productsQuery->orderBy('price', 'asc'),
-                'price_desc' => $productsQuery->orderBy('price', 'desc'),
-                default      => $productsQuery->latest(),
-            };
+                ->with(relations: 'category')
+                ->filter($request);
 
             // 📄 Pagination (20 per page)
             $products = $productsQuery->paginate(20)->withQueryString();
@@ -142,13 +130,14 @@ final class CategoryController extends Controller
             $breadcrumbs = $this->buildBreadcrumbs(category: $category);
 
             // ✅ Structured API response
-            return response()->json(data: [
-                                              'category'         => new CategoryResource(resource: $category),
-                                              'breadcrumbs'      => $breadcrumbs,
-                                              'sidebar_tree'     => new CategoryCollection(resource: $sidebarTree),
-                                              'available_brands' => $availableBrands,
-                                              'products'         => new ProductCollection(resource: $products),
-                                          ]);
+            return response()->json(
+                data: [
+                          'category'         => new CategoryResource(resource: $category),
+                          'breadcrumbs'      => $breadcrumbs,
+                          'sidebar_tree'     => new CategoryCollection(resource: $sidebarTree),
+                          'available_brands' => $availableBrands,
+                          'products'         => new ProductCollection(resource: $products),
+                      ]);
         });
     }
 
@@ -165,7 +154,7 @@ final class CategoryController extends Controller
     private function buildSidebarTree()
     {
         // 🌳 Always prefer the known root “TV sprejemniki”
-        $root = Category::where('slug', 'tv-sprejemniki')->first()
+        $root = Category::where(column: 'slug', operator: 'tv-sprejemniki')->first()
             ?? Category::whereNull('parent_id')->first()
             ?? Category::orderBy('id')->first();
 
@@ -183,55 +172,6 @@ final class CategoryController extends Controller
 
         // Return a single-item collection for serialization
         return collect(value: [$root]);
-    }
-
-    /**
-     * 🔍 Resolves all category IDs to be included when fetching products.
-     *
-     * - Includes the current category itself.
-     * - Includes all descendants recursively (children, grandchildren, etc.).
-     * - Uses iterative BFS traversal for safe recursion depth.
-     *
-     * @param Category $category
-     *
-     * @return array<int>
-     */
-    private function resolveCategoryScope(Category $category) : array
-    {
-        return $this->getDescendantIds(categoryId: $category->id);
-    }
-
-    /**
-     * 🌿 Recursively fetch all descendant category IDs using BFS traversal.
-     *
-     * @param int $categoryId
-     *
-     * @return array<int>
-     */
-    private function getDescendantIds(int $categoryId) : array
-    {
-        $ids     = [$categoryId];
-        $queue   = [$categoryId];
-        $visited = [$categoryId => true];
-
-        while ( ! empty($queue) ) {
-            $parentId = array_shift(array: $queue);
-
-            $childrenIds = DB::table(table: 'categories')
-                ->where(column: 'parent_id', operator: $parentId)
-                ->pluck(column: 'id')
-                ->toArray();
-
-            foreach ($childrenIds as $childId) {
-                if (! isset($visited[$childId])) {
-                    $visited[$childId] = true;
-                    $ids[]             = $childId;
-                    $queue[]           = $childId;
-                }
-            }
-        }
-
-        return $ids;
     }
 
     /**

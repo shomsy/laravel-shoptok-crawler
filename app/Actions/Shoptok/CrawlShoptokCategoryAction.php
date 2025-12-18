@@ -54,7 +54,7 @@ final readonly class CrawlShoptokCategoryAction
      *
      * @return int Total number of imported or updated products.
      */
-    public function handle(Category $category, string $baseUrl, int|null $maxPages = null, int $depth = 0) : int
+    public function handle(Category $category, string $baseUrl, int|null $maxPages = null, int $depth = 0): int
     {
         $maxPages ??= 25;
         if ($depth > 5) {
@@ -90,16 +90,24 @@ final readonly class CrawlShoptokCategoryAction
 
                         Log::info(message: "Found subcategory: {$sub['name']} → crawling...");
 
+                        // 🛡️ Safeguard: Prevent circular parent relationship
+                        if ($sub['slug'] === $category->slug) {
+                            Log::warning("⚠️ Detected circular dependency for slug {$sub['slug']} — skipping parent assignment.");
+                            $parentId = null;
+                        } else {
+                            $parentId = $category->id;
+                        }
+
                         $childCategory = Category::updateOrCreate(
                             ['slug' => $sub['slug']],
-                            ['name' => $sub['name'], 'parent_id' => $category->id]
+                            ['name' => $sub['name'], 'parent_id' => $parentId]
                         );
 
                         $totalImported += $this->handle(
                             category: $childCategory,
-                            baseUrl : $sub['url'],
+                            baseUrl: $sub['url'],
                             maxPages: $maxPages,
-                            depth   : $depth + 1
+                            depth: $depth + 1
                         );
                     }
                 }
@@ -131,13 +139,14 @@ final readonly class CrawlShoptokCategoryAction
                 $imported      = count(value: $pageItems);
                 $totalImported += $imported;
 
-                Log::info(message: "✅ Page {$page} done.",
-                          context: [
-                                       'url'      => $url,
-                                       'imported' => $imported,
-                                       'total'    => $totalImported,
-                                       'time'     => $result->executionTime,
-                                   ]
+                Log::info(
+                    message: "✅ Page {$page} done.",
+                    context: [
+                        'url'      => $url,
+                        'imported' => $imported,
+                        'total'    => $totalImported,
+                        'time'     => $result->executionTime,
+                    ]
                 );
 
                 echo "✅ Imported {$imported} items (Total: {$totalImported}) [{$result->executionTime}s]\n";
@@ -175,7 +184,7 @@ final readonly class CrawlShoptokCategoryAction
      * buildPageUrl('https://www.shoptok.si/televizorji/cene/206', 2)
      * // → "https://www.shoptok.si/televizorji/cene/206?page=2"
      */
-    private function buildPageUrl(string $baseUrl, int $page) : string
+    private function buildPageUrl(string $baseUrl, int $page): string
     {
         if ($page <= 1) {
             return $baseUrl;
