@@ -44,19 +44,21 @@ const fetchProducts = async (page = 1) => {
     isLoading.value = true;
 
     let url;
+    const searchParam = route.query.search;
+    
     if (categorySlug.value) {
       url = `/api/categories/${categorySlug.value}?page=${page}`;
-      if (selectedBrands.value.length)
-        url += `&brand=${encodeURIComponent(selectedBrands.value.join(','))}`;
-      if (sortOption.value && sortOption.value !== "popularity")
-        url += `&sort=${sortOption.value}`;
     } else {
       url = `/api/products?page=${page}`;
-      if (selectedBrands.value.length)
-        url += `&brand=${encodeURIComponent(selectedBrands.value.join(','))}`;
-      if (sortOption.value && sortOption.value !== "popularity")
-        url += `&sort=${sortOption.value}`;
     }
+
+    // 🔍 Append Filters
+    if (searchParam)
+      url += `&search=${encodeURIComponent(searchParam)}`;
+    if (selectedBrands.value.length)
+      url += `&brand=${encodeURIComponent(selectedBrands.value.join(','))}`;
+    if (sortOption.value && sortOption.value !== "popularity")
+      url += `&sort=${sortOption.value}`;
 
     const {data} = await axios.get(url);
 
@@ -79,8 +81,8 @@ const fetchProducts = async (page = 1) => {
 
 // Watch for route changes (Params OR Query)
 watch(
-    () => [route.params.slug, route.query.category],
-    ([newSlug, newQueryCat]) => {
+    () => [route.params.slug, route.query.category, route.query.search],
+    ([newSlug, newQueryCat, newSearch]) => {
       // 🧹 Resetovanje stanja pre novog fetch-a
       products.value = [];
       breadcrumbs.value = [];

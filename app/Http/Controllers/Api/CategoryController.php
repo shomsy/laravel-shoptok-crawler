@@ -94,7 +94,9 @@ final class CategoryController extends Controller
      */
     public function show(Request $request, string $slug)
     {
-        $cacheKey = "category_view:v8:{$slug}:" . md5(string: $request->fullUrl());
+        // 🔄 Use product max(updated_at) to intelligently invalidate cache
+        $lastUpdate = Product::max('updated_at') ?? now();
+        $cacheKey   = "category_view:v9:{$slug}:" . md5(string: $request->fullUrl() . (string) $lastUpdate);
 
         return Cache::remember(key: $cacheKey, ttl: now()->addMinutes(30), callback: function () use ($slug, $request) {
             /** @var Category $category */
@@ -117,10 +119,12 @@ final class CategoryController extends Controller
             // 📄 Pagination (20 per page)
             $products = $productsQuery->paginate(20)->withQueryString();
 
-            // 🏷️ Retrieve available brands (distinct + ordered)
+            // 🏷️ Retrieve available brands (distinct + filtered by category & search)
             $availableBrands = DB::table(table: 'products')
-                ->select(columns: 'brand')
                 ->whereIn(column: 'category_id', values: $categoryIds)
+                ->when($request->filled('search'), function ($q) use ($request) {
+                    $q->where('name', 'LIKE', '%' . $request->input('search') . '%');
+                })
                 ->whereNotNull(columns: 'brand')
                 ->distinct()
                 ->orderBy(column: 'brand')
@@ -132,12 +136,13 @@ final class CategoryController extends Controller
             // ✅ Structured API response
             return response()->json(
                 data: [
-                          'category'         => new CategoryResource(resource: $category),
-                          'breadcrumbs'      => $breadcrumbs,
-                          'sidebar_tree'     => new CategoryCollection(resource: $sidebarTree),
-                          'available_brands' => $availableBrands,
-                          'products'         => new ProductCollection(resource: $products),
-                      ]);
+                    'category'         => new CategoryResource(resource: $category),
+                    'breadcrumbs'      => $breadcrumbs,
+                    'sidebar_tree'     => new CategoryCollection(resource: $sidebarTree),
+                    'available_brands' => $availableBrands,
+                    'products'         => new ProductCollection(resource: $products),
+                ]
+            );
         });
     }
 
@@ -186,7 +191,7 @@ final class CategoryController extends Controller
      *
      * @return array<int, array{name: string, slug: string, url: string}>
      */
-    private function buildBreadcrumbs(Category $category) : array
+    private function buildBreadcrumbs(Category $category): array
     {
         $breadcrumbs  = collect();
         $visitedSlugs = [];
@@ -200,10 +205,10 @@ final class CategoryController extends Controller
             $visitedSlugs[] = $category->slug;
 
             $breadcrumbs->prepend(value: [
-                                             'name' => $category->name,
-                                             'slug' => $category->slug,
-                                             'url'  => "/category/{$category->slug}",
-                                         ]);
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'url'  => "/category/{$category->slug}",
+            ]);
 
             // Use loaded parent if available, otherwise query directly
             $category = $category->relationLoaded(key: 'parent')
@@ -217,10 +222,10 @@ final class CategoryController extends Controller
             $root = Category::where(column: 'slug', operator: $rootSlug)->first();
             if ($root) {
                 $breadcrumbs->prepend(value: [
-                                                 'name' => $root->name,
-                                                 'slug' => $root->slug,
-                                                 'url'  => "/category/{$root->slug}",
-                                             ]);
+                    'name' => $root->name,
+                    'slug' => $root->slug,
+                    'url'  => "/category/{$root->slug}",
+                ]);
             }
         }
 
