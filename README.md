@@ -1,78 +1,205 @@
-# Shoptok Crawler & Advanced Product Catalog
+# 🧠 Shoptok Crawler & Advanced Product Catalog
 
-A high-performance Laravel 11 & Vue.js 3 application designed to crawl complex hierarchical data from [Shoptok.si](https://www.shoptok.si) and present it through a state-of-the-art interactive catalog.
+![Laravel](https://img.shields.io/badge/Laravel-12.x-red?logo=laravel)
+![Vue.js](https://img.shields.io/badge/Vue-3.x-brightgreen?logo=vue.js)
+![Redis](https://img.shields.io/badge/Cache-Redis-blue)
+![Tests](https://img.shields.io/badge/Tests-88%20passing-success)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-Originally built as a technical interview task, this project has been evolved with advanced architecture, performance optimizations, and robust data integrity features.
+A high-performance **Laravel 12 + Vue.js 3** application built to crawl and manage complex hierarchical data from  
+[Shoptok.si](https://www.shoptok.si), providing a lightning-fast API and modern single-page frontend.
+
+Originally created as a **technical interview task**, this project has evolved into a **production-ready, scalable
+architecture** featuring intelligent caching, recursive data discovery, and an elegant Vue.js interface.
+
+---
 
 ## 🚀 Key Features
 
 ### 🛠️ Advanced Crawling Engine
 
-- **Recursive Hierarchy Discovery**: Automatically discovers and traverses the full category tree (e.g., from "TV sprejemniki" down to "Televizorji" and "TV dodatki").
-- **Selenium Integration**: Uses Selenium for robust HTML retrieval, ensuring dynamic content is correctly captured.
-- **Idempotent Batch Upserts**: Optimized delivery to the database using batch `upsert` logic, significantly reducing DB hits and ensuring no duplicate products.
-- **Recursion Safeguards**: Implements BFS (Breadth-First Search) and model-level listeners to prevent infinite loops and circular dependencies in the category tree.
+- **Recursive Hierarchy Discovery** — automatically crawls and maps the full category tree (e.g. `"TV sprejemniki"` →
+  `"Televizorji"` → `"TV dodatki"`).
+- **Dual-Engine Crawler** — supports both native HTTP and Selenium (headless Chrome) for JavaScript-heavy pages.
+- **Batch Upsert Logic** — idempotent product synchronization with minimal database hits.
+- **Circular Safety** — BFS-based traversal and model-level validation prevent infinite recursion or self-parenting.
 
 ### ⚡ Performance & Caching
 
-- **Smart Cache Invalidation**: Implements an intelligent caching strategy that uses the `max(updated_at)` timestamp of products in the cache key. The cache auto-refreshes the moment the crawler updates any data.
-- **Database Optimization**: Utilizes recursive ancestor/descendant lookup algorithms for fast scoping in large product sets.
-- **Sidebar Aggregation**: Dynamically calculates available brands and categories using optimized SQL queries that respect active filters and search terms.
+- **Smart Cache Invalidation** — cache keys include `max(updated_at)`, guaranteeing automatic refresh after data
+  changes.
+- **Brand Aggregation** — optimized SQL scans generate brand filters dynamically, respecting active queries.
+- **Sidebar Caching** — recursive category trees cached in Redis for sub-100 ms API response times.
+- **Optimized Eloquent Queries** — indexes and scope-level filtering ensure minimal DB load even on large datasets.
 
 ### 🎨 Modern Frontend (Vue.js 3 SPA)
 
-- **Interactive UI**: A sleek, responsive interface built with Vue 3 and Bootstrap 5.
-- **Real-time Filtering**: Supports multi-brand selection, sorting (Price/Popularity), and full-text search.
-- **Global & Scoped Navigation**: Handles navigation seamlessly between the global product list and specific category branches with accurate breadcrumb generation.
+- **Fully Interactive Interface** — Vue 3 (Composition API) + Bootstrap 5 for a clean, responsive layout.
+- **Real-Time Filtering** — multi-brand selection, price sorting, and instant search with API syncing.
+- **Breadcrumb Navigation** — built dynamically via category recursion for precise hierarchy mapping.
+- **Pagination & State Management** — seamless transitions between category routes using Vue Router.
+
+---
+
+## 🧪 Testing
+
+This project includes an extensive **automated test suite (88 tests)** covering:
+
+- Recursive category hierarchy logic
+- Product filtering and search scope behavior
+- API responses, cache invalidation, and pagination
+- Crawler idempotency and data consistency
+
+Run the tests via:
+
+```bash
+./vendor/bin/sail artisan test
+```
+
+---
+
+## 🔗 API Overview
+
+| Endpoint                     | Description                                                                 |
+|------------------------------|-----------------------------------------------------------------------------|
+| `GET /api/products`          | Paginated product list with search, brand, and sort filters                 |
+| `GET /api/categories`        | Returns all root categories for the sidebar                                 |
+| `GET /api/categories/{slug}` | Returns products for a specific category (recursively includes descendants) |
+
+All endpoints are cached and optimized for quick responses (< 100 ms with warm cache).
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Laravel 11 (PHP 8.3)
-- **Frontend**: Vue.js 3 (Composition API), Vite, Bootstrap 5
-- **Database**: MySQL 8
-- **Cache/Session**: Redis
-- **Automation**: Laravel Sail (Docker), Selenium
+| Layer               | Technology                              |
+|---------------------|-----------------------------------------|
+| **Backend**         | Laravel 12 (PHP 8.3)                    |
+| **Frontend**        | Vue.js 3 + Vite + Bootstrap 5           |
+| **Database**        | MySQL 8                                 |
+| **Cache / Session** | Redis                                   |
+| **Automation**      | Laravel Sail (Docker)                   |
+| **Crawling**        | GuzzleHTTP + Selenium (Headless Chrome) |
+
+---
 
 ## 📦 Installation & Setup
 
-### 1. Requirements
+### 1️⃣ Requirements
 
-Ensure you have **Docker** and **Docker Compose** installed.
+- **Docker** and **Docker Compose**
 
-### 2. Basic Setup
+### 2️⃣ Basic Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/shomsy/laravel-shoptok-crawler
 cd laravel-shoptok-crawler
 
-# Install dependencies (via Sail helper if local PHP is missing)
-docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html laravelsail/php83-composer:latest composer install --ignore-platform-reqs
+# Install dependencies
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" \
+  -w /var/www/html laravelsail/php83-composer:latest composer install --ignore-platform-reqs
 
-# Launch the environment
+# Launch Sail
 ./vendor/bin/sail up -d
 
 # Run migrations
 ./vendor/bin/sail artisan migrate
 ```
 
-### 3. Running the Crawler
-
-The crawler can be triggered via specialized Artisan commands:
+### 3️⃣ Run the Crawler
 
 ```bash
-# Crawl the entire TV hierarchy (Recursive mode)
+# Crawl the full "TV Sprejemniki" hierarchy recursively
 ./vendor/bin/sail artisan crawl:tv-sprejemniki
 
-# Crawl only the flat "Televizorji" category
+# Or crawl a single flat category (e.g. "Televizorji")
 ./vendor/bin/sail artisan crawl:televizorji
 ```
 
+---
+
 ## 🏗️ Architecture Highlights
 
-- **Action/Service Pattern**: Logic is decoupled into dedicated Actions (e.g., `CrawlShoptokCategoryAction`) and Services (e.g., `ShoptokProductParserService`), ensuring maximum testability and maintainability.
-- **Unified Scoping**: The product filtering logic is centralized in the `Product` model scope, ensuring consistent behavior between the Search API and the Category API.
-- **Safety First**: The application includes model "booters" to protect against data corruption during high-concurrency crawl operations.
+- **Action/Service Pattern** — decouples logic into reusable, testable components (`CrawlShoptokCategoryAction`,
+  `ShoptokApiService`, etc.).
+- **Unified Filtering Logic** — the `Product::filter()` scope powers both the search and category endpoints.
+- **Hierarchical Models** — `Category::getDescendantIds()` recursively retrieves all children using BFS traversal.
+- **Smart Cache Layer** — versioned cache (`v8`) invalidates automatically after DB updates.
+- **Model Boot Protection** — prevents circular parent assignments and ensures referential integrity.
+- **Breadcrumb Builder** — generates human-readable navigation chains dynamically for any depth.
 
 ---
-Built with ❤️ for performance and scalability.
+
+## 💡 Example API Response
+
+**`GET /api/categories/tv-dodatki`**
+
+```json
+{
+  "category": {
+    "id": 3,
+    "name": "TV dodatki",
+    "slug": "tv-dodatki"
+  },
+  "breadcrumbs": [
+    {
+      "name": "TV sprejemniki",
+      "url": "/category/tv-sprejemniki"
+    },
+    {
+      "name": "Televizorji",
+      "url": "/category/televizorji"
+    },
+    {
+      "name": "TV dodatki",
+      "url": "/category/tv-dodatki"
+    }
+  ],
+  "available_brands": [
+    "Samsung",
+    "Sony",
+    "LG",
+    "Vivax"
+  ],
+  "products": {
+    "data": [
+      ...
+    ],
+    "total": 294,
+    "per_page": 20,
+    "last_page": 15
+  }
+}
+```
+
+---
+
+## 🧩 Project Structure
+
+```
+app/
+ ├── Actions/Shoptok/...
+ ├── Console/Commands/CrawlTvSprejemnikiCommand.php
+ ├── Http/Controllers/Api/
+ │     ├── CategoryController.php
+ │     └── ProductController.php
+ ├── Models/
+ │     ├── Category.php
+ │     └── Product.php
+ ├── Services/Shoptok/
+ │     ├── ShoptokApiService.php
+ │     └── ShoptokSeleniumService.php
+ └── Data/Shoptok/CrawlResult.php
+```
+
+---
+
+## 🧑‍💻 Author
+
+**Developed by Miloš Stanković [@shomsy](https://github.com/shomsy)**
+
+Senior PHP Developer · Clean Architect · API Design Enthusiast
+
+---
+Built with ❤️ for **performance, maintainability, and technical elegance.**
