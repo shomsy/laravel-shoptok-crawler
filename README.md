@@ -99,6 +99,9 @@ cd laravel-shoptok-crawler
 # Install dependencies
 docker run --rm   -v "$(pwd):/var/www/html"   -w /var/www/html   laravelsail/php83-composer:latest   composer require laravel/sail --dev --ignore-platform-reqs
 
+# Create your local environment configuration by copying the example file: 
+cp .env.example .env
+
 # Launch Sail
 ./vendor/bin/sail up -d
 
