@@ -30,7 +30,7 @@ final class CrawlTvSprejemnikiCommand extends Command
      * Ensures the root category exists, starts the crawl process,
      * and logs how many products were imported.
      */
-    public function handle(CrawlShoptokCategoryAction $action) : int
+    public function handle(CrawlShoptokCategoryAction $action): int
     {
         // Ensure the root category exists in the database
         $category = Category::firstOrCreate(
@@ -43,8 +43,9 @@ final class CrawlTvSprejemnikiCommand extends Command
         // Run the crawler starting from the root Shoptok URL
         $count = $action->handle(
             category: $category,
-            baseUrl : 'https://www.shoptok.si/tv-sprejemniki/cene/56',
-            maxPages: (int) $this->option(key: 'max-pages')
+            baseUrl: 'https://www.shoptok.si/tv-sprejemniki/cene/56',
+            maxPages: (int) $this->option(key: 'max-pages'),
+            output: $this->output
         );
 
         $this->info(string: "✅ Crawl finished. Total imported/updated: {$count} products.");

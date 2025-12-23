@@ -11,6 +11,7 @@ use App\Services\Shoptok\ShoptokProductParserService;
 use App\Services\Shoptok\ShoptokSeleniumService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DomCrawler\Crawler;
 use Throwable;
 
@@ -40,23 +41,35 @@ final readonly class CrawlShoptokCategoryAction
     /**
      * Run the crawling process for a specific Shoptok category.
      *
-     * Steps:
-     *  1. Fetch and parse pages using Selenium + Parser services.
-     *  2. Detect and crawl subcategories recursively.
-     *  3. Save parsed products via batch upsert.
-     *  4. Stop when no products are found or max pages reached.
-     *  5. Clear cache after crawling.
-     *
      * @param Category $category Local category where products are linked.
      * @param string   $baseUrl  Shoptok category URL.
      * @param int|null $maxPages Page limit for safety.
      * @param int      $depth    Recursion depth (prevents infinite loops).
+     * @param array                     $visitedUrls Tracker for already crawled URLs.
+     * @param OutputInterface|null $output Optional command output interface.
      *
      * @return int Total number of imported or updated products.
      */
-    public function handle(Category $category, string $baseUrl, int|null $maxPages = null, int $depth = 0): int
-    {
+    public function handle(
+        Category $category,
+        string $baseUrl,
+        int|null $maxPages = null,
+        int $depth = 0,
+        array &$visitedUrls = [],
+        ?OutputInterface $output = null
+    ): int {
         $maxPages ??= 25;
+
+        // Guard: Check if URL was already visited in this session
+        if (isset($visitedUrls[$baseUrl])) {
+            Log::info(message: "Skipping already visited category: {$category->name} ({$baseUrl})");
+
+            return 0;
+        }
+
+        // Mark current URL as visited
+        $visitedUrls[$baseUrl] = true;
+
         if ($depth > 5) {
             Log::warning(message: "Recursion depth limit reached at {$baseUrl}");
 
@@ -64,18 +77,24 @@ final readonly class CrawlShoptokCategoryAction
         }
 
         $totalImported = 0;
+        $emptyStreak   = 0;
 
         for ($page = 1; $page <= $maxPages; $page++) {
             $url = $this->buildPageUrl(baseUrl: $baseUrl, page: $page);
 
             try {
-                echo "🔄 Fetching page {$page}/{$maxPages}: {$url} ... ";
+                $this->writeln(message: "🔄 Fetching page {$page}/{$maxPages}: {$url} ... ", output: $output);
 
                 $result = $this->seleniumService->getHtml(url: $url);
                 $html   = trim(string: $result->html);
 
-                if ($html === '') {
-                    Log::warning(message: 'Empty HTML returned, skipping page', context: compact(var_name: 'url'));
+                // 🧱 Problem 7: Minimal protection against malformed HTML
+                if ($html === '' || ! str_contains(haystack: $html, needle: '<body')) {
+                    Log::warning(message: 'Malformed or empty HTML returned', context: compact(var_name: 'url'));
+                    $emptyStreak++;
+                    if ($emptyStreak >= 3) {
+                        break;
+                    }
                     continue;
                 }
 
@@ -84,6 +103,16 @@ final readonly class CrawlShoptokCategoryAction
                     $subcategories = $this->categoryParser->parseSubcategories(html: $html);
 
                     foreach ($subcategories as $sub) {
+                        // 🧱 Problem 3: Validate subcategory URL
+                        if (empty($sub['url']) || str_starts_with(haystack: $sub['url'], needle: '#')) {
+                            continue;
+                        }
+
+                        // Skip if subcategory URL already visited
+                        if (isset($visitedUrls[$sub['url']])) {
+                            continue;
+                        }
+
                         if ($sub['slug'] === $category->slug) {
                             continue;
                         }
@@ -92,24 +121,27 @@ final readonly class CrawlShoptokCategoryAction
 
                         // 🛡️ Safeguard: Prevent circular parent relationship
                         $childCategory = Category::where('slug', $sub['slug'])->first();
-                        $parentId = $category->id;
+                        $parentId      = $category->id;
 
                         if ($childCategory) {
                             // 1. ROOT CLAIM: If current category is a root (no parent),
                             // it "claims" this child even if it's currently linked elsewhere.
-                            // This auto-fixes corrupted hierarchies during a root crawl.
                             if ($category->parent_id === null) {
                                 $parentId = $category->id;
                             }
                             // 2. Lock parent: If it already has a parent, don't overwrite it
-                            // (prevents deeper recursion links from hijacking the hierarchy)
                             elseif ($childCategory->parent_id !== null) {
                                 $parentId = $childCategory->parent_id;
                             }
                             // 3. Prevent cycles: If current category is already a descendant of the found subcategory
                             else {
-                                $descendantsOfChild = Category::getDescendantIds($childCategory->id);
-                                if (in_array($category->id, $descendantsOfChild)) {
+                                // 🧱 Problem 6: Avoid false positives in circular check
+                                $descendantsOfChild = array_diff(
+                                    Category::getDescendantIds($childCategory->id),
+                                    [$childCategory->id]
+                                );
+
+                                if (in_array(needle: $category->id, haystack: $descendantsOfChild)) {
                                     Log::warning("⚠️ Prevented circular dependency: {$category->slug} is already a descendant of {$childCategory->slug}.");
                                     $parentId = $childCategory->parent_id;
                                 }
@@ -125,7 +157,9 @@ final readonly class CrawlShoptokCategoryAction
                             category: $childCategory,
                             baseUrl: $sub['url'],
                             maxPages: $maxPages,
-                            depth: $depth + 1
+                            depth: $depth + 1,
+                            visitedUrls: $visitedUrls,
+                            output: $output
                         );
                     }
                 }
@@ -134,10 +168,17 @@ final readonly class CrawlShoptokCategoryAction
                 $dom   = new Crawler(node: $html);
                 $nodes = $this->parserService->findProductNodes(dom: $dom);
 
+                // 🧱 Problem 2: emptyStreak instead of immediate break
                 if ($nodes->count() === 0) {
-                    Log::info(message: 'No product nodes found — stopping crawl', context: compact('url', 'page'));
-                    break;
+                    Log::info(message: 'No product nodes found', context: compact('url', 'page'));
+                    $emptyStreak++;
+                    if ($emptyStreak >= 3) {
+                        break;
+                    }
+                    continue;
                 }
+
+                $emptyStreak = 0; // Reset streak on success
 
                 $pageItems = [];
                 foreach ($nodes as $node) {
@@ -167,14 +208,21 @@ final readonly class CrawlShoptokCategoryAction
                     ]
                 );
 
-                echo "✅ Imported {$imported} items (Total: {$totalImported}) [{$result->executionTime}s]\n";
+                $this->writeln(message: "✅ Imported {$imported} items (Total: {$totalImported}) [{$result->executionTime}s]", output: $output);
 
                 if ($imported === 0) {
-                    break;
+                    $emptyStreak++;
+                    if ($emptyStreak >= 3) {
+                        break;
+                    }
+                    continue;
                 }
 
-                // Wait before next page
-                usleep(microseconds: self::RATE_LIMIT_US + random_int(min: 0, max: 300000));
+                // 🧱 Problem 4: Configurable throttling
+                if (config(key: 'shoptok.throttle.enabled', default: true)) {
+                    $delay = (int) config(key: 'shoptok.throttle.delay_us', default: 1_500_000);
+                    usleep(microseconds: $delay + random_int(min: 0, max: 300_000));
+                }
             } catch (Throwable $e) {
                 Log::error(message: "Failed to crawl page {$page}", context: [
                     'url'   => $url,
@@ -184,15 +232,47 @@ final readonly class CrawlShoptokCategoryAction
             }
         }
 
-        // 🧹 Clear cache after crawl
+        // 🧱 Problem 1: Targeted cache flush
+        $this->flushCache();
+
+        return $totalImported;
+    }
+
+    /**
+     * 🧱 Problem 5: Proper output handling
+     */
+    private function writeln(string $message, ?OutputInterface $output = null): void
+    {
+        if ($output) {
+            $output->writeln($message);
+
+            return;
+        }
+
+        if (app()->runningInConsole()) {
+            echo $message . (str_ends_with($message, "\n") ? '' : "\n");
+        }
+    }
+
+    /**
+     * 🧱 Problem 1: Better cache management
+     */
+    private function flushCache(): void
+    {
         try {
-            Cache::flush();
-            Log::info(message: "Cache flushed after crawl.");
+            // If the driver supports tags, be surgical.
+            // Otherwise, we might have to flush everything, but let's avoid global flush if possible.
+            if (method_exists(Cache::getStore(), 'tags')) {
+                Cache::tags(['products', 'categories'])->flush();
+                Log::info(message: "Tagged cache flushed.");
+            } else {
+                // If no tags, we avoid Cache::flush() to not kill sessions/etc.
+                // We could selectively forget specific keys if we had them.
+                Log::info(message: "Selective cache flush skipped (tags not supported).");
+            }
         } catch (Throwable $e) {
             Log::warning(message: "Could not flush cache: " . $e->getMessage());
         }
-
-        return $totalImported;
     }
 
     /**

@@ -32,4 +32,9 @@ return [
         'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Language' => 'sl-SI,sl;q=0.9,en-GB;q=0.8,en;q=0.7',
     ],
+
+    'throttle' => [
+        'enabled' => env('CRAWLER_THROTTLE', true),
+        'delay_us' => 1_500_000, // 1.5 seconds
+    ],
 ];
