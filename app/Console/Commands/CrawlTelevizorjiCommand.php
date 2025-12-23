@@ -72,7 +72,7 @@ final class CrawlTelevizorjiCommand extends Command
      * @return int
      *         Exit code: `0` for success, non-zero for failure (per POSIX standard).
      */
-    public function handle(CrawlShoptokCategoryAction $action): int
+    public function handle(CrawlShoptokCategoryAction $action) : int
     {
         //  Ensure “Televizorji” category exists (create it if missing).
         $category = Category::firstOrCreate(
