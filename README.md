@@ -108,6 +108,10 @@ cp .env.example .env
 
 # Run migrations
 ./vendor/bin/sail artisan migrate
+
+Install frontend dependencies using Vite: ./vendor/bin/sail npm install
+Build frontend assets for production: ./vendor/bin/sail npm run build
+
 ```
 
 ### 3️⃣ Run the Crawler
